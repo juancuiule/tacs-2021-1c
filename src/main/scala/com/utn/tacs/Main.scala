@@ -1,0 +1,8 @@
+package com.utn.tacs
+
+import cats.effect.{ExitCode, IO, IOApp}
+
+object Main extends IOApp {
+  def run(args: List[String]) =
+    Tacs1c2021Server.stream[IO].compile.drain.as(ExitCode.Success)
+}
