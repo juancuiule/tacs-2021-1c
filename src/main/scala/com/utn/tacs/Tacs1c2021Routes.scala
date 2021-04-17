@@ -7,6 +7,36 @@ import org.http4s.dsl.Http4sDsl
 
 object Tacs1c2021Routes {
 
+  /*
+  * /auth
+  * POST /signup
+  * POST /login
+  * POST /logout <- auth
+  *
+  * /decks
+  * POST /      <- admin
+  * DELETE /:id <- admin
+  * PATCH  /:id <- admin
+  *
+  * /match
+  * POST /            <- crear partida
+  * ??? /             <- continuar ???
+  * GET /:id          <- traer partida
+  * GET /:id/replay   <- traer jugadas y resultado de la partida
+  * ??? /:id/withdraw <- abandonar
+  *
+  * /admin
+  * GET /stats                  <- admin
+  * GET /scoreboard?a=...&b=... <- admin
+  * GET /stats/user/:id         <- admin
+  *
+  * /cards
+  * GET ?search=...
+  * GET /:id
+  *
+  *
+  * */
+
   def authRoutes[F[_] : Sync](A: Auth[F]): HttpRoutes[F] = {
     val dsl = new Http4sDsl[F] {}
     import dsl._
