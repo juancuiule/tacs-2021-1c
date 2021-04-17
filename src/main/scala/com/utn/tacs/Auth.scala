@@ -10,6 +10,8 @@ import org.http4s.circe._
 
 trait Auth[F[_]] {
   def login(n: Auth.LoginData): F[Auth.LoginData]
+  def signup(d: AnyVal): F[AnyVal]
+  def logout(): F[AnyVal]
 }
 
 object Auth {
@@ -19,6 +21,8 @@ object Auth {
     def login(n: Auth.LoginData): F[Auth.LoginData] = {
       LoginData(n.username, n.password).pure[F]
     }
+    def signup(d: AnyVal): F[AnyVal] = ???
+    def logout(): F[AnyVal] = ???
   }
 
   final case class LoginData(username: String, password: String)
@@ -26,7 +30,7 @@ object Auth {
   object LoginData {
     implicit val loginEncoder: Encoder[LoginData] = (a: LoginData) => Json.obj(
       ("username", Json.fromString(a.username)),
-      ("password", Json.fromString(a.password)), // TODO: no devolver esto
+      ("password", Json.fromString(a.password)), // no devolver password
     )
     implicit val loginDecoder: Decoder[LoginData] = deriveDecoder[LoginData]
 

@@ -10,20 +10,34 @@ object Tacs1c2021Routes {
   /*
   * /auth
   * POST /signup
+  * { username: "", password: "" }
   * POST /login
+  * { username: "", password: "" }
   * POST /logout <- auth
   *
   * /decks
   * POST /      <- admin
+  * { name: "", cards: ... }
   * DELETE /:id <- admin
   * PATCH  /:id <- admin
+  * { name: "..." }
+  * PUT    /:id
+  * { name: "", cards: "" }
+  * GET / => { decks: [...] }
+  * GET /:id/cards/ => { cards: [{}, {}] }
+  * GET /:id => { name: "", cards: "" }
+  *
+  * lenguaje?
+  * hay usar sockets para jugar al mismo tiempo?
+  * desafiar es jugar contra alguien en particular?
+  * las cartas las crea el admin?
   *
   * /match
-  * POST /            <- crear partida
-  * ??? /             <- continuar ???
+  * POST /            <- crear partida { id: , deck: }
+  * POST /:id          <- continuar ??? {  }
   * GET /:id          <- traer partida
   * GET /:id/replay   <- traer jugadas y resultado de la partida
-  * ??? /:id/withdraw <- abandonar
+  * POST /:id/withdraw <- abandonar
   *
   * /admin
   * GET /stats                  <- admin
@@ -31,11 +45,14 @@ object Tacs1c2021Routes {
   * GET /stats/user/:id         <- admin
   *
   * /cards
+  * GET  ?name=...
+  * GET  /:id
+  * POST /
+  *
+  * /superhero
   * GET ?search=...
-  * GET /:id
   *
-  *
-  * */
+  */
 
   def authRoutes[F[_] : Sync](A: Auth[F]): HttpRoutes[F] = {
     val dsl = new Http4sDsl[F] {}
@@ -57,19 +74,6 @@ object Tacs1c2021Routes {
           resp <- ResetContent()
         } yield resp
     }
-
-    /*
-    * POST /match               <- crear partida
-    * GET  /match/:id/replay    <- traer jugadas y resultados de la partida
-    * ???  /match/:id/withdraw  <-
-    *
-    * GET /admin/stats
-    * GET /admin/scoreboard?a=...&b=...
-    * GET /admin/stats/user/:id
-    *
-    * GET /cards/
-    *
-    * */
   }
 
   def decksRoutes[F[_] : Sync](): HttpRoutes[F] = {
