@@ -2,7 +2,7 @@ package com.utn.tacs
 
 import cats.effect.{ConcurrentEffect, Timer}
 import com.utn.tacs.domain.auth.Auth
-import com.utn.tacs.infrastructure.endpoint.{AuthEndpoints, DeckEndpoints}
+import com.utn.tacs.infrastructure.endpoint.{AuthEndpoints, DeckEndpoints, MatchEndpoints}
 import org.http4s.server.Router
 //import cats.implicits._
 import fs2.Stream
@@ -10,6 +10,7 @@ import fs2.Stream
 import org.http4s.implicits._
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.server.middleware.Logger
+
 import scala.concurrent.ExecutionContext.global
 
 object Server {
@@ -20,6 +21,7 @@ object Server {
     val httpApp = Router(
       "/auth" -> AuthEndpoints.authRoutes[F](authAlg),
       "/decks" -> DeckEndpoints.decksRoutes(),
+      "/matches" -> MatchEndpoints.decksRoutes()
     ).orNotFound
 
     val finalHttpApp = Logger.httpApp(true, false)(httpApp)
