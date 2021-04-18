@@ -1,12 +1,12 @@
-package com.utn.tacs
+package com.utn.tacs.domain.auth
 
 import cats.Applicative
 import cats.effect.Sync
 import cats.implicits._
 import io.circe.generic.semiauto.deriveDecoder
 import io.circe.{Decoder, Encoder, Json}
-import org.http4s.{EntityDecoder, EntityEncoder}
 import org.http4s.circe._
+import org.http4s.{EntityDecoder, EntityEncoder}
 
 trait Auth[F[_]] {
   def login(n: Auth.LoginData): F[Auth.LoginData]
