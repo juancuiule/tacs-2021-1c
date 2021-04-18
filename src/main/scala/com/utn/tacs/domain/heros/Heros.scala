@@ -1,11 +1,9 @@
 package com.utn.tacs.domain.heros
 
-import cats.Applicative
+import org.http4s.EntityDecoder
+import io.circe.generic.auto._
 import cats.effect.Sync
 import cats.implicits._
-import io.circe.{Encoder, Decoder}
-import io.circe.generic.semiauto._
-import org.http4s._
 import org.http4s.implicits._
 import org.http4s.client.Client
 import org.http4s.client.dsl.Http4sClientDsl
@@ -25,6 +23,7 @@ object Heros {
     import dsl._
 
     def get(id: String): F[Heros.Hero] = {
+      implicit val decoder: EntityDecoder[F, Heros.Hero] = jsonOf[F, Heros.Hero]
       C.expect[Hero](GET(uri"https://superheroapi.com/api/API_KEY/" / id))
         .adaptError { case t => HeroError(t) } // Prevent Client Json Decoding Failure Leaking
     }
@@ -37,33 +36,7 @@ object Heros {
                               power: String,
                               combat: String
                              )
-
   final case class Hero(id: String, name: String, powerstats: PowerStats)
-
   final case class HeroError(e: Throwable) extends RuntimeException
-
-  object Hero {
-    implicit val heroDecoder: Decoder[Hero] = deriveDecoder[Hero]
-
-    implicit def heroEntityDecoder[F[_] : Sync]: EntityDecoder[F, Hero] =
-      jsonOf
-
-    implicit val heroEncoder: Encoder[Hero] = deriveEncoder[Hero]
-
-    implicit def heroEntityEncoder[F[_] : Applicative]: EntityEncoder[F, Hero] =
-      jsonEncoderOf
-  }
-
-  object PowerStats {
-    implicit val heroDecoder: Decoder[PowerStats] = deriveDecoder[PowerStats]
-
-    implicit def heroEntityDecoder[F[_] : Sync]: EntityDecoder[F, PowerStats] =
-      jsonOf
-
-    implicit val heroEncoder: Encoder[PowerStats] = deriveEncoder[PowerStats]
-
-    implicit def heroEntityEncoder[F[_] : Applicative]: EntityEncoder[F, PowerStats] =
-      jsonEncoderOf
-  }
 
 }
