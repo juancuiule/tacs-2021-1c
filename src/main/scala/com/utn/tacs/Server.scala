@@ -2,7 +2,7 @@ package com.utn.tacs
 
 import cats.effect.{ConcurrentEffect, Timer}
 import com.utn.tacs.domain.auth.Auth
-import com.utn.tacs.infrastructure.endpoint.{AuthEndpoints, DeckEndpoints, CardEndpoints}
+import com.utn.tacs.infrastructure.endpoint.{AuthEndpoints, CardEndpoints, DeckEndpoints}
 import org.http4s.server.Router
 //import cats.implicits._
 import com.utn.tacs.domain.cards.CardApiRequester
