@@ -2,12 +2,13 @@ package com.utn.tacs.infrastructure.endpoint
 
 import cats.effect.Sync
 import cats.implicits._
-import com.utn.tacs.domain.`match`.{Match, MatchService}
-import org.http4s.HttpRoutes
-import org.http4s.dsl.Http4sDsl
-import io.circe.syntax._
+import com.utn.tacs.domain.`match`.MatchService
 import io.circe.generic.auto._
-import org.http4s.circe.jsonEncoder
+import io.circe.syntax._
+import org.http4s.HttpRoutes
+import org.http4s.circe._
+import org.http4s.dsl.Http4sDsl
+
 
 /*
   * /match
@@ -27,11 +28,12 @@ object MatchEndpoints {
     HttpRoutes.of[F] {
       case GET -> Root / matchId =>
         val maybeMatch = MatchService.getMatch(matchId)
-        var je : Match = new Match("","","","","","")
-        je.
         maybeMatch
           .map(m => Ok(m.asJson))
-          .getOrElse(Ok("no se encontro el matchId {matchId}"))
+          .getOrElse(NotFound(s"match:${matchId} not found"))
+        /*val je : Match = new Match(matchId,"","","","","")
+          Ok(je.asJson)
+          */
       case DELETE -> Root / id =>
         for {
           resp <- Ok(s"deleted deck with id: ${id}")
