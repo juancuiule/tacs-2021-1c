@@ -40,10 +40,13 @@ object MatchEndpoints {
          newMatch <- matchServiceImpl.createMatch(payload("player1_id"),payload("player2_id"),payload("deck_id"))
          resp <- Created(newMatch.asJson)
         } yield resp
-      /*case req@PUT -> Root / matchId / "withdraw" =>
-        val payload: Match = req[Match]
-        matchServiceImpl.withdraw(matchId, payload.player1Id)
-        Accepted(s"match: ${matchId} was withdrawn by player:${payload.player1Id}")*/
+      case req@PUT -> Root / matchId / "withdraw" =>
+      for {
+          payload <- req.as[Map[String,String]]
+          loserPlayer = payload("loser_player_id")
+          withdrawResult <- matchServiceImpl.withdraw(matchId, loserPlayer)
+           resp <- Accepted(withdrawResult.asJson)
+          } yield resp
     }
   }
 }

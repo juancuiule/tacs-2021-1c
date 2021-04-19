@@ -8,7 +8,7 @@ trait MatchService[F[_]] {
 
   def getMatch(matchId: String): Option[Match]
 
-  def withdraw(matchId: String, playerId: String): Unit
+  def withdraw(matchId: String, loserPlayer: String): F[Match]
 }
 
 
@@ -25,9 +25,10 @@ object MatchService {
       return Some(matchVal)
     }
 
-    override def withdraw(matchId: String, playerId: String): Unit = {
+    override def withdraw(matchId: String, loserPlayer: String): F[Match] = {
       //TODO:implementar
-      println(s"player: ${playerId} withdraws the match: ${matchId}")
+      println(s"player: ${loserPlayer} withdraws the match: ${matchId}")
+      Match(matchId,loserPlayer,"winner_player","marvel","finished","winner_player").pure[F]
     }
   }
 
