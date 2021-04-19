@@ -1,6 +1,7 @@
 package com.utn.tacs
 
 import cats.effect.{ConcurrentEffect, Timer}
+import com.utn.tacs.domain.`match`.MatchService
 import com.utn.tacs.domain.auth.Auth
 import com.utn.tacs.infrastructure.endpoint.{AuthEndpoints, DeckEndpoints, HerosEndpoints, MatchEndpoints}
 import org.http4s.server.Router
@@ -24,11 +25,12 @@ object Server {
 
       authAlg = Auth.impl[F]
       herosAlg = Heros.impl[F](client)
+      matchServiceImpl = MatchService.impl[F]
 
       httpApp = Router(
         "/auth" -> AuthEndpoints.authRoutes[F](authAlg),
         "/decks" -> DeckEndpoints.decksRoutes(),
-        "/matches" -> MatchEndpoints.decksRoutes(),
+        "/matches" -> MatchEndpoints.matchRoutes(matchServiceImpl),
         "/superheros" -> HerosEndpoints.herosRoutes(herosAlg)
       ).orNotFound
 

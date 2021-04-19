@@ -2,15 +2,15 @@ package com.utn.tacs.infrastructure.endpoint
 
 import cats.effect.Sync
 import cats.implicits._
-import com.utn.tacs.domain.`match`.{CreateMatch, Match, MatchService}
+import com.utn.tacs.domain.`match`.{Match, MatchService}
 import io.circe.generic.auto._
 import io.circe.syntax._
 import org.http4s.circe.CirceEntityCodec.circeEntityDecoder
-import org.http4s.{EntityDecoder, HttpRoutes}
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
+import org.http4s.{EntityDecoder, HttpRoutes}
 
-import scala.util.Try
+
 
 
 /*
@@ -24,30 +24,26 @@ import scala.util.Try
 
 
 object MatchEndpoints {
+  implicit def decoder[F[_]: Sync]: EntityDecoder[F, Match] = jsonOf[F, Match]
 
-  def decksRoutes[F[_] : Sync](): HttpRoutes[F] = {
-    implicit def decoder[F[_]: Sync]: EntityDecoder[F, Match] = jsonOf[F, Match]
+  def matchRoutes[F[_] : Sync](matchServiceImpl : MatchService[F]): HttpRoutes[F] = {
     val dsl = new Http4sDsl[F] {}
     import dsl._
     HttpRoutes.of[F] {
       case GET -> Root / matchId =>
-        MatchService.getMatch(matchId)
+        matchServiceImpl.getMatch(matchId)
           .map(m => Ok(m.asJson))
           .getOrElse(NotFound(s"match:${matchId} not found"))
       case req@POST -> Root =>
         for{
          payload <- req.as[Map[String,String]]
-         newMatch <- MatchService.createMatch(payload("player1_id"),payload("player2_id"),payload("deck_id"))
+         newMatch <- matchServiceImpl.createMatch(payload("player1_id"),payload("player2_id"),payload("deck_id"))
          resp <- Created(newMatch.asJson)
         } yield resp
-        /*  req.body.
-          MatchService.createMatch(payload.player1Id, payload.player2Id, payload.deckId)
-          resp     <- Created(newMatch.asJson) */
-
-      case req@PUT -> Root / matchId / "withdraw" =>
+      /*case req@PUT -> Root / matchId / "withdraw" =>
         val payload: Match = req[Match]
-        MatchService.withdraw(matchId, payload.player1Id)
-        Accepted(s"match: ${matchId} was withdrawn by player:${payload.player1Id}")
+        matchServiceImpl.withdraw(matchId, payload.player1Id)
+        Accepted(s"match: ${matchId} was withdrawn by player:${payload.player1Id}")*/
     }
   }
 }

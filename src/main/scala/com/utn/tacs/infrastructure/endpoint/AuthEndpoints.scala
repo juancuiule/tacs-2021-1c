@@ -3,7 +3,6 @@ package com.utn.tacs.infrastructure.endpoint
 import cats.effect.Sync
 import cats.implicits._
 import com.utn.tacs.domain.auth.Auth
-import com.utn.tacs.domain.auth.Auth.LoginData
 import org.http4s.{EntityDecoder, HttpRoutes}
 import org.http4s.dsl.Http4sDsl
 import io.circe.generic.auto._
