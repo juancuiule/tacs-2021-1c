@@ -3,10 +3,10 @@ package com.utn.tacs
 import cats.effect.{ConcurrentEffect, Timer}
 import com.utn.tacs.domain.`match`.MatchService
 import com.utn.tacs.domain.auth.Auth
-import com.utn.tacs.infrastructure.endpoint.{AuthEndpoints, DeckEndpoints, HerosEndpoints, MatchEndpoints}
+import com.utn.tacs.infrastructure.endpoint.{AuthEndpoints, DeckEndpoints, CardEndpoints, MatchEndpoints}
 import org.http4s.server.Router
 //import cats.implicits._
-import com.utn.tacs.domain.heros.Heros
+import com.utn.tacs.domain.cards.CardApiRequester
 import fs2.Stream
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.client.middleware.FollowRedirect
@@ -24,17 +24,20 @@ object Server {
       client = FollowRedirect(3)(preClient)
 
       authAlg = Auth.impl[F]
-      herosAlg = Heros.impl[F](client)
       matchServiceImpl = MatchService.impl[F]
+      cardApiRequester = CardApiRequester.impl[F](client)
+
 
       httpApp = Router(
         "/auth" -> AuthEndpoints.authRoutes[F](authAlg),
         "/decks" -> DeckEndpoints.decksRoutes(),
         "/matches" -> MatchEndpoints.matchRoutes(matchServiceImpl),
-        "/superheros" -> HerosEndpoints.herosRoutes(herosAlg)
+        "/cards" -> CardEndpoints.cardsRoutes(cardApiRequester)
+
+
       ).orNotFound
 
-      finalHttpApp = Logger.httpApp(true, false)(httpApp)
+      finalHttpApp = Logger.httpApp(logHeaders = true, logBody = false)(httpApp)
 
       exitCode <- BlazeServerBuilder[F](global)
         .bindHttp(8080, "127.0.0.1")
