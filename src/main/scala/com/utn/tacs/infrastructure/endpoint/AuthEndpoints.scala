@@ -7,6 +7,7 @@ import org.http4s.{EntityDecoder, HttpRoutes}
 import org.http4s.dsl.Http4sDsl
 import io.circe.generic.auto._
 import io.circe.syntax._
+import org.http4s.circe.CirceEntityCodec.circeEntityEncoder
 import org.http4s.circe._
 
 
@@ -29,7 +30,7 @@ object AuthEndpoints {
         } yield resp
       case POST -> Root / "logout" =>
         for {
-          resp <- ResetContent()
+          resp <- Ok("Logout Successful")
         } yield resp
     }
   }
