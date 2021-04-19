@@ -1,5 +1,3 @@
 package com.utn.tacs.domain.user
 
-class User(
-
-          )
+class User()

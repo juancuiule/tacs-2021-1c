@@ -20,14 +20,13 @@ object CardEndpoints {
           card <- cardRequester.getById(id)
           resp <- Ok(card.asJson)
         } yield resp
-      //TODO: se deberia usar cardRequester.getByName(name)
       case GET -> Root / "name" / name =>
-        Ok(Json.obj(("results",
-          Json.arr(
-            Json.obj(("id", Json.fromInt(15)), ("name", Json.fromString(name))),
-            Json.obj(("id", Json.fromInt(18)), ("name", Json.fromString(name))),
-          )
-        )))
+        for {
+          cards <- cardRequester.getByName(name)
+          resp <- Ok(Json.obj(
+            ("cards", cards.map(card => card.asJson).asJson)
+          ))
+        } yield resp
     }
   }
 }
