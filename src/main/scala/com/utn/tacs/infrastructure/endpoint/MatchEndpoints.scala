@@ -2,10 +2,10 @@ package com.utn.tacs.infrastructure.endpoint
 
 import cats.effect.Sync
 import cats.implicits._
-import com.utn.tacs.domain.`match`.{Match, MatchService}
-import com.utn.tacs.domain.auth.Auth
+import com.utn.tacs.domain.`match`.{CreateMatch, Match, MatchService}
 import io.circe.generic.auto._
 import io.circe.syntax._
+import org.http4s.circe.CirceEntityCodec.circeEntityDecoder
 import org.http4s.{EntityDecoder, HttpRoutes}
 import org.http4s.circe._
 import org.http4s.dsl.Http4sDsl
@@ -35,11 +35,15 @@ object MatchEndpoints {
           .map(m => Ok(m.asJson))
           .getOrElse(NotFound(s"match:${matchId} not found"))
       case req@POST -> Root =>
-        for {
-          payload  <- req.as[Match]
-          newMatch <- MatchService.createMatch(payload.player1Id, payload.player2Id, payload.deckId)
-          resp     <- Created(newMatch.asJson)
+        for{
+         payload <- req.as[Map[String,String]]
+         newMatch <- MatchService.createMatch(payload("player1_id"),payload("player2_id"),payload("deck_id"))
+         resp <- Created(newMatch.asJson)
         } yield resp
+        /*  req.body.
+          MatchService.createMatch(payload.player1Id, payload.player2Id, payload.deckId)
+          resp     <- Created(newMatch.asJson) */
+
       case req@PUT -> Root / matchId / "withdraw" =>
         val payload: Match = req[Match]
         MatchService.withdraw(matchId, payload.player1Id)

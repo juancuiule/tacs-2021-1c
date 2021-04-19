@@ -3,15 +3,15 @@ package com.utn.tacs.domain.`match`
 import cats.effect.IO
 import org.http4s.dsl.impl.UUIDVar
 
-object MatchService[F[Match]] {
+object MatchService {
   def getMatch(matchId: String): Option[Match] = {
     val matchVal = new Match(matchId, "pepe", "roberto", "marvel_heroes", "active", "")
     return Some(matchVal)
   }
 
-  def createMatch(player1Id: String, player2Id: String, deckId: String): F[Match] = {
+  def createMatch(player1Id: String, player2Id: String, deckId: String): Match = {
     //TODO: validar que los playerID existan y  que deckId exista
-    IO.pure(Match("", player1Id, player2Id, deckId, "active", ""))
+    Match("", player1Id, player2Id, deckId, "active", "")
   }
 
   def withdraw(matchId: String, playerId: String): Unit = {
