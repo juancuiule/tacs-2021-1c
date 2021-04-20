@@ -3,7 +3,7 @@ package com.utn.tacs
 import cats.effect.{ConcurrentEffect, Timer}
 import com.utn.tacs.domain.`match`.MatchService
 import com.utn.tacs.domain.auth.Auth
-import com.utn.tacs.infrastructure.endpoint.{AuthEndpoints, DeckEndpoints, CardEndpoints, MatchEndpoints}
+import com.utn.tacs.infrastructure.endpoint.{AdminEndpoints, AuthEndpoints, DeckEndpoints, CardEndpoints, MatchEndpoints}
 import org.http4s.server.Router
 //import cats.implicits._
 import com.utn.tacs.domain.cards.CardApiRequester
@@ -29,12 +29,11 @@ object Server {
 
 
       httpApp = Router(
+        "/admin" -> AdminEndpoints.routes(),
         "/auth" -> AuthEndpoints.authRoutes[F](authAlg),
         "/decks" -> DeckEndpoints.decksRoutes(),
         "/matches" -> MatchEndpoints.matchRoutes(matchServiceImpl),
         "/cards" -> CardEndpoints.cardsRoutes(cardApiRequester)
-
-
       ).orNotFound
 
       finalHttpApp = Logger.httpApp(logHeaders = true, logBody = false)(httpApp)
