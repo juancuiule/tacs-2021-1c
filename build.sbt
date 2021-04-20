@@ -28,3 +28,5 @@ lazy val root = (project in file("."))
     addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
     testFrameworks += new TestFramework("munit.Framework")
   )
+
+mainClass in Compile := Some("com.utn.tacs.Main")
