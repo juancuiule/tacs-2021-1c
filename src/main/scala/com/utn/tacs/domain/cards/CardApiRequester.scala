@@ -53,7 +53,7 @@ trait CardApiRequester[F[_]] {
 
 object CardApiRequester {
   val baseUri = uri"https://superheroapi.com/"
-  val uriWithKey: Uri = baseUri.withPath("api/API_KEY/")
+  val uriWithKey: Uri = baseUri.withPath("api/" + scala.util.Properties.envOrElse("SUPERHERO_API_KEY", "" ) + "/")
 
   def apply[F[_]](implicit ev: CardApiRequester[F]): CardApiRequester[F] = ev
 
