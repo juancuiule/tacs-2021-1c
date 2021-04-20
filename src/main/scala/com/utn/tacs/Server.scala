@@ -3,7 +3,7 @@ package com.utn.tacs
 import cats.effect.{ConcurrentEffect, Timer}
 import com.utn.tacs.domain.`match`.MatchService
 import com.utn.tacs.domain.auth.Auth
-import com.utn.tacs.infrastructure.endpoint.{AuthEndpoints, CardEndpoints, DeckEndpoints, MatchEndpoints}
+import com.utn.tacs.infrastructure.endpoint.{AdminEndpoints, AuthEndpoints, DeckEndpoints, CardEndpoints, MatchEndpoints}
 import org.http4s.server.Router
 //import cats.implicits._
 //import com.utn.tacs.domain.cards.CardApiRequester
@@ -21,13 +21,11 @@ object Server {
   def stream[F[_] : ConcurrentEffect](implicit T: Timer[F]): Stream[F, Nothing] = {
     //      preClient <- BlazeClientBuilder[F](global).stream
     //      client = FollowRedirect(3)(preClient)
-
     val authAlg = Auth.impl[F]
     val matchServiceImpl = MatchService.impl[F]
     //      cardApiRequester = CardApiRequester.impl[F](client)
-
-
     val httpApp = Router(
+      "/admin" -> AdminEndpoints.routes(),
       "/auth" -> AuthEndpoints.authRoutes(authAlg),
       "/decks" -> DeckEndpoints.decksRoutes(),
       "/matches" -> MatchEndpoints.matchRoutes(matchServiceImpl),
@@ -37,7 +35,7 @@ object Server {
     val finalHttpApp = Logger.httpApp(logHeaders = true, logBody = false)(httpApp)
     for {
       exitCode <- BlazeServerBuilder[F](global)
-        .bindHttp(8080, "127.0.0.1")
+        .bindHttp(8080, "0.0.0.0")
         .withHttpApp(finalHttpApp)
         .serve
     } yield exitCode

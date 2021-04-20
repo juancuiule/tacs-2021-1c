@@ -1,0 +1,7 @@
+version: '3'
+
+services:
+  tacs-1c-2021:
+    build: .
+    ports:
+      - "8080:8080"
