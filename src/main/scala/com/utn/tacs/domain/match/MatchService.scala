@@ -22,13 +22,13 @@ object MatchService {
     override def getMatch(matchId: String): Option[Match] = {
       //TODO: validar que los playerID existan y  que deckId exista
       val matchVal = new Match(matchId, "pepe", "roberto", "marvel_heroes", "active", "")
-      return Some(matchVal)
+      Some(matchVal)
     }
 
     override def withdraw(matchId: String, loserPlayer: String): F[Match] = {
       //TODO:implementar
       println(s"player: ${loserPlayer} withdraws the match: ${matchId}")
-      Match(matchId,loserPlayer,"winner_player","marvel","finished","winner_player").pure[F]
+      Match(matchId, loserPlayer, "winner_player", "marvel", "finished", "winner_player").pure[F]
     }
   }
 
