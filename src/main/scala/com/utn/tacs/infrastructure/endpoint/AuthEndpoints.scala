@@ -44,7 +44,7 @@ object AuthEndpoints {
 
         action.flatMap {
           case Right(saved) => Ok(saved.asJson)
-          case Left(_) => Conflict()
+          case Left(_) => Conflict("Username already in use")
         }
       case POST -> Root / "logout" =>
         for {
