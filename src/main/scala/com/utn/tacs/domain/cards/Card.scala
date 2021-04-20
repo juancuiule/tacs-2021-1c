@@ -8,4 +8,6 @@ final case class PowerStats(intelligence: String,
                             combat: String
                            )
 
-final case class Card(id: String, name: String, powerstats: PowerStats)
+final case class Image(url: String)
+
+final case class Card(id: String, name: String, powerstats: PowerStats, image: Image)
