@@ -7,3 +7,4 @@ target
 .bsp
 .idea
 out
+.env
