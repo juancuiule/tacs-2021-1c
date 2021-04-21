@@ -1,7 +1,5 @@
 package com.utn.tacs.domain.cards
 
-import cats.Applicative
-import cats.data.EitherT
 import cats.effect.Sync
 import cats.implicits._
 import io.circe.generic.auto._
@@ -14,43 +12,25 @@ import org.http4s.{EntityDecoder, Uri}
 
 import scala.collection.mutable.ListBuffer
 
-class CardRepository[F[_] : Applicative] {
+object CardRepository {
 
   // ListBuffer es mutable
   // se argumentar usar lista inmutable
   private val cache: ListBuffer[Card] = new ListBuffer[Card]()
 
-  // TODO:
-  //  es medio una cagada tener que envolver todos los objetos en F[_]
-  //  estaria bueno que si pido una Card al repo, me duelva siempre una Card, no F[Card]
+  def get(id: Int): Option[Card] = cache find { aCard => aCard.id == id }
 
-  def get(id: Int): F[Option[Card]] = {
-    cache.find { aCard => aCard.id == id }
-      .pure[F]
-  }
-
-  def getByName(name: String): F[List[Card]] = {
+  def getByName(name: String): List[Card] = {
     cache.filter { aCard => aCard.name.toLowerCase contains name.toLowerCase }
       .toList
-      .pure[F]
   }
 
-  // : Unit
-  def add(card: Card): F[Card] = {
-    cache addOne card
-    card.pure[F]
-  }
+  def add(card: Card): Unit = cache addOne card
 
-  def addAll(cards: List[Card]): F[List[Card]] = {
-    cache addAll cards
-    cards.pure[F]
-  }
+  def addAll(cards: List[Card]): Unit = cache addAll cards
 
 }
 
-object CardRepository {
-  def apply[F[_] : Applicative]() = new CardRepository[F]()
-}
 
 case object CardNotFoundError extends Product with Serializable
 
@@ -63,8 +43,10 @@ trait CardApiRequester[F[_]] {
 
 object CardApiRequester {
   val baseUri = uri"https://superheroapi.com/"
-  val uriWithKey: Uri = baseUri.withPath("api/" + scala.util.Properties.envOrElse("SUPERHERO_API_KEY", "" ) + "/")
 
+  // TODO: podria ser un metodo, que de una excepcion más legible si no encuentra a api_key
+val uriWithKey: Uri = baseUri.withPath("api/" + scala.util.Properties.envOrNone("SUPERHERO_API_KEY") + "/" )
+//  val uriWithKey: Uri = baseUri.withPath("api/4157956970883904/")
 
   def apply[F[_]](implicit ev: CardApiRequester[F]): CardApiRequester[F] = ev
 
@@ -76,36 +58,42 @@ object CardApiRequester {
 
     import dsl._
 
-    val cardRepo: CardRepository[F] = CardRepository()
 
     def getById(id: Int): F[Card] = {
-      val cacheCard = EitherT.fromOptionF(cardRepo.get(id), CardNotFoundError)
-      cacheCard.value.flatMap {
-        case Right(found) => found.pure[F]
-        case Left(CardNotFoundError) =>
-          for {
-            card <- C.expect[Card](GET(uriWithKey / id.toString)).adaptError({ case t => CardError(t) })
-            _ <- cardRepo.add(card)
-          } yield card
+      CardRepository.get(id) match {
+        case Some(card) => card.pure[F]
+        case None => cardThroughApi(id)
       }
     }
+
+    // TODO: que pasa si esto falla?
+    private def cardThroughApi(id: Int): F[Card] = C.expect[Card](GET(uriWithKey / id.toString)).adaptError({ case t => CardError(t) })
+
+
+
+//         TODO: no se si tiene sentido cachear acá de está forma
+//          porque una vez que ya hay un superheroe con ese nombre
+//          guardado va a traer siempre el que este en caché y no
+//          va a hacer la req a la API
+//          ------------------------------------------------------
+//          RTA: estoy de acuerdo con esto, creo que la busqueda por nombre
+//          se va a tener que mandar siempre a la api, o cachearla de forma especial en un diccionario busquedas = TrieMap[nombreBuscado, List[Card]]
+
+//         TODO: falta manejar el error que devuelve la API si no
+//          encuentra superheroe con ese nombre
+
 
     def getByName(name: String): F[List[Card]] = {
-      // TODO: no se si tiene sentido cachear acá de está forma
-      // porque una vez que ya hay un superheroe con ese nombre
-      // guardado va a traer siempre el que este en caché y no
-      // va a hacer la req a la API
-
-      // TODO: falta manejar el error que devuelve la API si no
-      // encuentra superheroe con ese nombre
-      val cachedList = cardRepo.getByName(name)
-      cachedList.flatMap {
-        case Nil => C.expect[SearchResponse](GET(uriWithKey / "search/" / name)).adaptError({ case t => CardError(t) }).flatMap(cards => {
-          cardRepo.addAll(cards.results)
-        })
-        case _ => cachedList
+      val cached = CardRepository.getByName(name)
+      cached match {
+        case Nil => cardThroughApiByName(name)
+        case _ => cached.pure[F]
       }
     }
+
+    // TODO: que pasa si esto falla?
+    private def cardThroughApiByName(name: String): F[List[Card]] = C.expect[SearchResponse](GET(uriWithKey / "search/" / name)).adaptError({ case t => CardError(t) }) map { c => c.results }
+
   }
 
   final case class SearchResponse(results: List[Card]) extends AnyVal
@@ -113,5 +101,3 @@ object CardApiRequester {
   final case class CardError(e: Throwable) extends RuntimeException
 
 }
-
-
