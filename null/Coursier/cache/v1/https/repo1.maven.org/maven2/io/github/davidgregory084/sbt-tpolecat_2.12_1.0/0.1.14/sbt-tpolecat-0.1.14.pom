@@ -1,0 +1,59 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>io.github.davidgregory084</groupId>
+    <artifactId>sbt-tpolecat</artifactId>
+    <packaging>jar</packaging>
+    <description>scalac options for the enlightened</description>
+    <url>https://github.com/DavidGregory084/sbt-tpolecat</url>
+    <version>0.1.14</version>
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.html</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <name>sbt-tpolecat</name>
+    <inceptionYear>2019</inceptionYear>
+    <organization>
+        <name>David Gregory</name>
+        <url>https://github.com/DavidGregory084/sbt-tpolecat</url>
+    </organization>
+    <scm>
+        <url>https://github.com/DavidGregory084/sbt-tpolecat</url>
+        <connection>scm:git:git@github.com:DavidGregory084/sbt-tpolecat.git</connection>
+    </scm>
+    <developers>
+        <developer>
+            <id>DavidGregory084</id>
+            <name>David Gregory</name>
+            <url>https://github.com/DavidGregory084</url>
+            <email>davidgregory084@gmail.com</email>
+        </developer>
+    </developers>
+    <properties>
+        <scalaVersion>2.12</scalaVersion>
+        <sbtVersion>1.0</sbtVersion>
+        <extraDependencyAttributes xml:space="preserve">+e:sbtVersion:#@#:+1.0:#@#:+module:#@#:+partial-unification:#@#:+e:scalaVersion:#@#:+2.12:#@#:+organisation:#@#:+org.lyranthe.sbt:#@#:+branch:#@#:+@#:NULL:#@:#@#:+revision:#@#:+1.1.2:#@#:</extraDependencyAttributes>
+    </properties>
+    <dependencies>
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+            <version>2.12.10</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.scala-sbt</groupId>
+            <artifactId>sbt</artifactId>
+            <version>1.3.8</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.lyranthe.sbt</groupId>
+            <artifactId>partial-unification</artifactId>
+            <version>1.1.2</version>
+        </dependency>
+    </dependencies>
+</project>

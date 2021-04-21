@@ -20,7 +20,7 @@ object CardEndpoints {
       case GET -> Root / id =>
         print(id)
         for {
-          card <- cardRequester.getById(id)
+          card <- cardRequester.getById(id.toInt)
           resp <- Ok(card.asJson)
         } yield resp
       case GET -> Root / "name" / name =>
