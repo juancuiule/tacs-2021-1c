@@ -45,8 +45,8 @@ object CardApiRequester {
   val baseUri = uri"https://superheroapi.com/"
 
   // TODO: podria ser un metodo, que de una excepcion más legible si no encuentra a api_key
-val uriWithKey: Uri = baseUri.withPath("api/" + scala.util.Properties.envOrNone("SUPERHERO_API_KEY") + "/" )
-//  val uriWithKey: Uri = baseUri.withPath("api/4157956970883904/")
+  val uriWithKey: Uri = baseUri.withPath("api/" + scala.util.Properties.envOrElse("SUPERHERO_API_KEY", "") + "/")
+
 
   def apply[F[_]](implicit ev: CardApiRequester[F]): CardApiRequester[F] = ev
 
@@ -66,21 +66,17 @@ val uriWithKey: Uri = baseUri.withPath("api/" + scala.util.Properties.envOrNone(
       }
     }
 
-    // TODO: que pasa si esto falla?
     private def cardThroughApi(id: Int): F[Card] = C.expect[Card](GET(uriWithKey / id.toString)).adaptError({ case t => CardError(t) })
 
 
 
-//         TODO: no se si tiene sentido cachear acá de está forma
-//          porque una vez que ya hay un superheroe con ese nombre
-//          guardado va a traer siempre el que este en caché y no
-//          va a hacer la req a la API
-//          ------------------------------------------------------
-//          RTA: estoy de acuerdo con esto, creo que la busqueda por nombre
-//          se va a tener que mandar siempre a la api, o cachearla de forma especial en un diccionario busquedas = TrieMap[nombreBuscado, List[Card]]
-
-//         TODO: falta manejar el error que devuelve la API si no
-//          encuentra superheroe con ese nombre
+    //         TODO: no se si tiene sentido cachear acá de está forma
+    //          porque una vez que ya hay un superheroe con ese nombre
+    //          guardado va a traer siempre el que este en caché y no
+    //          va a hacer la req a la API
+    //          ------------------------------------------------------
+    //          RTA: estoy de acuerdo con esto, creo que la busqueda por nombre
+    //          se va a tener que mandar siempre a la api, o cachearla de forma especial en un diccionario busquedas = TrieMap[nombreBuscado, List[Card]]
 
 
     def getByName(name: String): F[List[Card]] = {
@@ -91,7 +87,11 @@ val uriWithKey: Uri = baseUri.withPath("api/" + scala.util.Properties.envOrNone(
       }
     }
 
-    // TODO: que pasa si esto falla?
+    //    TODO: falta manejar el error que devuelve la API si no
+    //     encuentra superheroe con ese nombre
+    //     ------------------------------------------------------
+    //     RTA: leer CardEndpoints GET -> Root / "test" / "1"
+
     private def cardThroughApiByName(name: String): F[List[Card]] = C.expect[SearchResponse](GET(uriWithKey / "search/" / name)).adaptError({ case t => CardError(t) }) map { c => c.results }
 
   }
