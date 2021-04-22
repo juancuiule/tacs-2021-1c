@@ -4,6 +4,7 @@ import cats.data.EitherT
 import cats.effect.Sync
 import cats.implicits._
 import cats.{Applicative, Monad}
+import io.circe.Json
 import io.circe.generic.auto._
 import io.circe.syntax._
 import org.http4s._
@@ -14,6 +15,10 @@ import org.http4s.implicits._
 
 import scala.collection.concurrent.TrieMap
 import scala.util.Random
+
+// EitherT https://typelevel.org/cats/datatypes/eithert.html
+// Either https://typelevel.org/cats/datatypes/either.html
+// Either[A, B] = Left A | Right B
 
 // Model
 final case class PowerStats(
@@ -71,7 +76,7 @@ class CardRepository[F[_] : Applicative] {
   def findByName(name: String): F[Set[Card]] =
     cache.values.filter(card => card.name == name).toSet.pure[F]
 
-  def list(pageSize: Int, offset: Int): F[List[Card]] = ???
+  def list(pageSize: Int, offset: Int): F[List[Card]] = cache.values.slice(offset, offset + pageSize).toList.pure[F]
 }
 
 object CardRepository {
@@ -126,13 +131,17 @@ object CardValidation {
 
 
 // Service
-final case class SearchResponse(results: List[Card]) extends AnyVal
+sealed trait ExternalApiResponse
 
-class CardService[F[_]](
-                         repository: CardRepository[F],
-                         validation: CardValidation[F],
-                         C: Client[F]
-                       ) {
+final case class SearchResponse(results: List[Card]) extends ExternalApiResponse
+
+final case class ApiResponseError(response: String, error: String) extends ExternalApiResponse
+
+class CardService[F[+_]](
+                          repository: CardRepository[F],
+                          validation: CardValidation[F],
+                          C: Client[F]
+                        ) {
   val baseUri = uri"https://superheroapi.com/"
   val uriWithKey: Uri = baseUri.withPath("api/" + scala.util.Properties.envOrElse("SUPERHERO_API_KEY", "") + "/")
 
@@ -142,6 +151,9 @@ class CardService[F[_]](
       saved <- EitherT.liftF(repository.create(card))
     } yield saved
 
+  def getAll(pageSize: Int, offset: Int): F[List[Card]] =
+    repository.list(pageSize, offset)
+
   def get(id: Int)(implicit M: Monad[F]): EitherT[F, CardNotFoundError.type, Card] =
     EitherT.fromOptionF(repository.get(id), CardNotFoundError)
 
@@ -149,62 +161,50 @@ class CardService[F[_]](
 
   def list(pageSize: Int, offset: Int): F[List[Card]] = repository.list(pageSize, offset)
 
-  def getCardsFromAPI(searchName: String)(implicit FF: Sync[F]): F[Either[String, SearchResponse]] = {
+  // TODO: revisar como podemos separar el service cartas del service que le pega a la API
+  //       o ver si tiene sentido hacer eso
+  def getCardsFromAPI(searchName: String)(implicit FF: Sync[F]): F[Either[String, ExternalApiResponse]] = {
     implicit val searchDecoder: EntityDecoder[F, SearchResponse] = jsonOf[F, SearchResponse]
+    implicit val apiResponseErrorDecoder: EntityDecoder[F, ApiResponseError] = jsonOf[F, ApiResponseError]
+
+
     C.get(uriWithKey / "search/" / searchName) {
-      case r@Response(Status.Ok, _, _, _, _) => r.attemptAs[SearchResponse].leftMap(_.message).value
-      case _ => Either.left[String, SearchResponse]("match error").pure[F]
+      // La api de superheroes devuelve un 200 aún cuando no encontro superhero
+      case r@Response(Status.Ok, _, _, _, _) => {
+        // val x: DecodeResult[F, SearchResponse] = r.attemptAs[SearchResponse]
+        // attemptAs[UnTipo] devuelve un EitherT[F, DecodeFailure, UnTipo]
+        // left{map,flatMap} hace ese map si el either es un left, si hay error: DecodeFailure
+        // en este caso flatMap porque devolvemos otro DecodeResult[F, UnTipo]
+        // leftMap :: (f: DecodeFailure => OtroTipo)
+        // leftFlatMap :: (f: DecodeFailure => DecodeResult[F, UnTipo])
+        r.attemptAs[SearchResponse].leftFlatMap[ExternalApiResponse, String](_ => EitherT {
+          // si lo de arriba falló en parsearse entonces la respuesta no tenía la forma esperada
+          // probablemente sea algo como { response: String, message: String }
+          r.attemptAs[ApiResponseError].leftMap(_ => "Error de parseo").value
+        })
+      }.value
+      case _ => Either.left[String, ExternalApiResponse]("match error").pure[F]
     }
   }
 }
 
 object CardService {
-  def apply[F[_]](repository: CardRepository[F], validation: CardValidation[F], client: Client[F]) =
+  def apply[F[+_]](repository: CardRepository[F], validation: CardValidation[F], client: Client[F]) =
     new CardService[F](repository, validation, client)
 }
 
 //
 
 // Endpoint
-class CardEndpoints[F[_] : Sync](client: Client[F]) extends Http4sDsl[F] {
+class CardEndpoints[F[+_] : Sync](client: Client[F]) extends Http4sDsl[F] {
+
+  // Esto probablemente convenga instanciarlo desde el `Server`
   val repository: CardRepository[F] = CardRepository()
   val validator: CardValidation[F] = CardValidation(repository)
   val service: CardService[F] = CardService(repository, validator, client)
-  //  val client: Client[F] = ???
 
   implicit val cardDecoder: EntityDecoder[F, Card] = jsonOf
-
-  def endpoints(): HttpRoutes[F] =
-    superHeroApiEndpoint() <+>
-      createCardEndpoint() <+>
-      getCardEndpoint()
-
-  def superHeroApiEndpoint(): HttpRoutes[F] =
-    HttpRoutes.of[F] {
-      case GET -> Root / "search" / searchName =>
-        val actionResult = service.getCardsFromAPI(searchName)
-        actionResult.flatMap {
-          case Right(cards) => Ok(cards.asJson)
-          case Left(_) => InternalServerError()
-        }
-    }
-
-  def createCardEndpoint(): HttpRoutes[F] =
-    HttpRoutes.of[F] {
-      case req@POST -> Root => {
-        val actionResult = for {
-          card <- req.as[Card]
-          result <- service.create(card).value
-        } yield result
-
-        actionResult.flatMap {
-          case Right(card) => Ok(card.asJson)
-          case Left(CardAlreadyExistsError(card)) => Conflict(card.asJson)
-        }
-      }
-    }
-
-  def getCardEndpoint(): HttpRoutes[F] =
+  val getCardEndpoint: HttpRoutes[F] =
     HttpRoutes.of[F] {
       case GET -> Root / IntVar(id) =>
         // repository.get(id) :: F[Option[Card]]
@@ -216,9 +216,67 @@ class CardEndpoints[F[_] : Sync](client: Client[F]) extends Http4sDsl[F] {
           case None => NotFound()
         }
     }
+
+  def endpoints(): HttpRoutes[F] =
+    superHeroApiEndpoint <+>
+      createCardEndpoint <+>
+      getCardEndpoint <+>
+      getAllEndpoint
+
+  def superHeroApiEndpoint: HttpRoutes[F] =
+    HttpRoutes.of[F] {
+      case GET -> Root / "search" / searchName =>
+        val actionResult = service.getCardsFromAPI(searchName)
+        actionResult.flatMap {
+          case Right(cards: SearchResponse) => Ok(cards.asJson)
+          case Right(resp: ApiResponseError) => NotFound(resp.asJson)
+          case Left(e) => InternalServerError(e)
+        }
+    }
+
+  def createCardEndpoint: HttpRoutes[F] =
+    HttpRoutes.of[F] {
+      case req@POST -> Root =>
+        val actionResult = for {
+          card <- req.as[Card]
+          result <- service.create(card).value
+        } yield result
+
+        actionResult.flatMap {
+          case Right(card) => Ok(card.asJson)
+          case Left(CardAlreadyExistsError(card)) => Conflict(card.asJson)
+        }
+    }
+
+  def getAllEndpoint: HttpRoutes[F] = {
+    object PageSizeQueryParamMatcher extends OptionalQueryParamDecoderMatcher[Int]("pagesize")
+    object OffsetQueryParamMatcher extends OptionalQueryParamDecoderMatcher[Int]("offset")
+    HttpRoutes.of[F] {
+      case GET -> Root :? PageSizeQueryParamMatcher(pageSize) +& OffsetQueryParamMatcher(offset) =>
+        for {
+          cards <- service.getAll(pageSize.getOrElse(100), offset.getOrElse(0))
+          resp <- Ok(Json.obj(
+            ("cards", cards.asJson)
+          ))
+        } yield resp
+    }
+  }
 }
 
 object CardEndpoints {
-  def apply[F[_] : Sync](client: Client[F]) =
+  def apply[F[+_] : Sync](client: Client[F]): HttpRoutes[F] =
     new CardEndpoints[F](client).endpoints()
 }
+
+// Así funcionan las cosas como el "asJson" (https://blog.rockthejvm.com/scala-3-extension-methods/)
+// object Prueba {
+//   case class Person(name: String) {
+//     def greet: String = s"Hi, I'm $name, nice to meet you."
+//   }
+//
+//   implicit class PersonLike(string: String) {
+//     def greet: String = Person(string).greet
+//   }
+//
+//   "Juan".greet // Hi, I'm Juan, nice to meet you
+// }
