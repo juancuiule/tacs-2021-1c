@@ -131,12 +131,20 @@ object CardValidation {
 
 
 // Service
+
+// sealed indica que _todo lo que implemente este trait va a estar en este archivo
+// ayuda a indicar si un pattern matching no está teniendo en cuenta todas las opciones
 sealed trait ExternalApiResponse
-
 final case class SearchResponse(results: List[Card]) extends ExternalApiResponse
-
 final case class ApiResponseError(response: String, error: String) extends ExternalApiResponse
 
+// El + es medio complicado de explicar pero es para establecer que si existe relación
+// entre dos _ entonces existe la misma relacion entre dos F[_]
+
+// En este caso:
+// ApiResponseError <: ExternalApiResponse
+// y por ser + (covariante, va en el mismo sentido), entonces:
+// F[ApiResponseError] <: F[ExternalApiResponse]
 class CardService[F[+_]](
                           repository: CardRepository[F],
                           validation: CardValidation[F],
@@ -166,7 +174,6 @@ class CardService[F[+_]](
   def getCardsFromAPI(searchName: String)(implicit FF: Sync[F]): F[Either[String, ExternalApiResponse]] = {
     implicit val searchDecoder: EntityDecoder[F, SearchResponse] = jsonOf[F, SearchResponse]
     implicit val apiResponseErrorDecoder: EntityDecoder[F, ApiResponseError] = jsonOf[F, ApiResponseError]
-
 
     C.get(uriWithKey / "search/" / searchName) {
       // La api de superheroes devuelve un 200 aún cuando no encontro superhero
