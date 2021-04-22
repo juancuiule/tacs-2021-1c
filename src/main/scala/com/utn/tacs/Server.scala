@@ -1,11 +1,13 @@
 package com.utn.tacs
 
 import cats.effect.{ConcurrentEffect, Timer}
-import com.utn.tacs.domain.`match`.MatchService
-import com.utn.tacs.domain.auth.Auth
-import com.utn.tacs.infrastructure.endpoint.{AdminEndpoints, AuthEndpoints, DeckEndpoints, CardEndpoints, MatchEndpoints}
+//import com.utn.tacs.domain.`match`.MatchService
+//import com.utn.tacs.domain.auth.Auth
+//import com.utn.tacs.infrastructure.endpoint.MatchEndpoints
+//import com.utn.tacs.infrastructure.endpoint.{AdminEndpoints, AuthEndpoints, DeckEndpoints, MatchEndpoints}
 import org.http4s.server.Router
-import com.utn.tacs.domain.cards.CardApiRequester
+//import com.utn.tacs.domain.cards.CardApiRequester
+import com.utn.tacs.domain.cards.CardEndpoints
 import fs2.Stream
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.client.middleware.FollowRedirect
@@ -22,16 +24,17 @@ object Server {
       preClient <- BlazeClientBuilder[F](global).stream
       client = FollowRedirect(3)(preClient)
 
-      authAlg = Auth.impl[F]
-      matchServiceImpl = MatchService.impl[F]
-      cardApiRequester = CardApiRequester.impl[F](client)
+//      authAlg = Auth.impl[F]
+//      matchServiceImpl = MatchService.impl[F]
+      //      cardApiRequester = CardApiRequester.impl[F](client)
 
       httpApp = Router(
-        "/admin" -> AdminEndpoints.routes(),
-        "/auth" -> AuthEndpoints.authRoutes(authAlg),
-        "/decks" -> DeckEndpoints.decksRoutes(),
-        "/matches" -> MatchEndpoints.matchRoutes(matchServiceImpl),
-        "/cards" -> CardEndpoints.cardsRoutes(cardApiRequester)
+        //        "/admin" -> AdminEndpoints.routes(),
+        //        "/auth" -> AuthEndpoints.authRoutes(authAlg),
+        //        "/decks" -> DeckEndpoints.decksRoutes(),
+//        "/matches" -> MatchEndpoints.matchRoutes(matchServiceImpl),
+        "/superhero" -> CardEndpoints[F](client),
+        //        "/cards" -> CardEndpoints.cardsRoutes(cardApiRequester)
       ).orNotFound
 
       finalHttpApp = Logger.httpApp(logHeaders = true, logBody = false)(httpApp)
