@@ -3,7 +3,7 @@ package com.utn.tacs.domain.cards
 import cats.data.EitherT
 import cats.effect.Sync
 import cats.implicits._
-import cats.{Applicative, Monad}
+import cats.{Applicative, Functor, Monad}
 import io.circe.Json
 import io.circe.generic.auto._
 import io.circe.syntax._
@@ -153,6 +153,7 @@ class CardService[F[+_]](
   val baseUri = uri"https://superheroapi.com/"
   val uriWithKey: Uri = baseUri.withPath("api/" + scala.util.Properties.envOrElse("SUPERHERO_API_KEY", "") + "/")
 
+
   def create(card: Card)(implicit M: Monad[F]): EitherT[F, CardAlreadyExistsError, Card] =
     for {
       _ <- validation.doesNotExist(card)
@@ -162,7 +163,7 @@ class CardService[F[+_]](
   def getAll(pageSize: Int, offset: Int): F[List[Card]] =
     repository.list(pageSize, offset)
 
-  def get(id: Int)(implicit M: Monad[F]): EitherT[F, CardNotFoundError.type, Card] =
+  def get(id: Int)(implicit FF: Functor[F]): EitherT[F, CardNotFoundError.type, Card] =
     EitherT.fromOptionF(repository.get(id), CardNotFoundError)
 
   def getByName(name: String): F[Set[Card]] = repository.findByName(name)
