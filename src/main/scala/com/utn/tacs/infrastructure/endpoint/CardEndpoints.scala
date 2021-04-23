@@ -17,10 +17,10 @@ object CardEndpoints {
     import dsl._
 
     HttpRoutes.of[F] {
-      case GET -> Root / id =>
+      case GET -> Root / IntVar(id) =>
         print(id)
         for {
-          card <- cardRequester.getById(id.toInt)
+          card <- cardRequester.getById(id)
           resp <- Ok(card.asJson)
         } yield resp
 
@@ -32,19 +32,6 @@ object CardEndpoints {
             ("cards", cards.map(card => card.asJson).asJson)
           ))
         } yield resp
-
-      //        FIXME: intento de get/id que devuelva respuestas mas controladas
-      //         no logré hacerlo funcionar, no atrapa nada y devuelve un 500
-      case GET -> Root / "test" / "1" =>
-        try {
-          for {
-            card <- cardRequester.getById(5434354)
-            resp <- Ok(card.asJson)
-          } yield resp
-        } catch {
-          case _: CardError => NotFound("atrapa CardError")
-          case _: Exception => NotFound("atrapa Exception")
-        }
 
 
     }

@@ -10,24 +10,24 @@ import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.implicits._
 import org.http4s.{EntityDecoder, Uri}
 
-import scala.collection.mutable.ListBuffer
+import scala.collection.concurrent.TrieMap
 
 object CardRepository {
 
-  // ListBuffer es mutable
-  // se argumentar usar lista inmutable
-  private val cache: ListBuffer[Card] = new ListBuffer[Card]()
+  private val cache = new TrieMap[Int, Card]()
 
-  def get(id: Int): Option[Card] = cache find { aCard => aCard.id == id }
+  def get(id: Int): Option[Card] = cache get id
 
   def getByName(name: String): List[Card] = {
-    cache.filter { aCard => aCard.name.toLowerCase contains name.toLowerCase }
+    cache
+      .values
+      .filter(aCard => aCard.name.toLowerCase contains name.toLowerCase)
       .toList
   }
 
-  def add(card: Card): Unit = cache addOne card
+  def add(card: Card): Unit = cache += (card.id -> card)
 
-  def addAll(cards: List[Card]): Unit = cache addAll cards
+  def addAll(cards: List[Card]): Unit = cache ++= (cards map (card => (card.id, card)))
 
 }
 
@@ -60,39 +60,26 @@ object CardApiRequester {
 
 
     def getById(id: Int): F[Card] = {
-      CardRepository.get(id) match {
+      val card = CardRepository get id
+      card match {
         case Some(card) => card.pure[F]
-        case None => cardThroughApi(id)
+        case None => getCardFromSuperHeroAPI(id)
       }
     }
 
-    private def cardThroughApi(id: Int): F[Card] = C.expect[Card](GET(uriWithKey / id.toString)).adaptError({ case t => CardError(t) })
+    private def getCardFromSuperHeroAPI(id: Int): F[Card] = C.expect[Card](GET(uriWithKey / id.toString)).adaptError({ case t => CardError(t) })
 
-
-
-    //         TODO: no se si tiene sentido cachear acá de está forma
-    //          porque una vez que ya hay un superheroe con ese nombre
-    //          guardado va a traer siempre el que este en caché y no
-    //          va a hacer la req a la API
-    //          ------------------------------------------------------
-    //          RTA: estoy de acuerdo con esto, creo que la busqueda por nombre
-    //          se va a tener que mandar siempre a la api, o cachearla de forma especial en un diccionario busquedas = TrieMap[nombreBuscado, List[Card]]
 
 
     def getByName(name: String): F[List[Card]] = {
       val cached = CardRepository.getByName(name)
       cached match {
-        case Nil => cardThroughApiByName(name)
+        case Nil => getCardFromSuperHeroAPIByName(name)
         case _ => cached.pure[F]
       }
     }
 
-    //    TODO: falta manejar el error que devuelve la API si no
-    //     encuentra superheroe con ese nombre
-    //     ------------------------------------------------------
-    //     RTA: leer CardEndpoints GET -> Root / "test" / "1"
-
-    private def cardThroughApiByName(name: String): F[List[Card]] = C.expect[SearchResponse](GET(uriWithKey / "search/" / name)).adaptError({ case t => CardError(t) }) map { c => c.results }
+    private def getCardFromSuperHeroAPIByName(name: String): F[List[Card]] = C.expect[SearchResponse](GET(uriWithKey / "search/" / name)).adaptError({ case t => CardError(t) }) map { c => c.results }
 
   }
 
