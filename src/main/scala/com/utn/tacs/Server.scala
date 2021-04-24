@@ -1,40 +1,40 @@
 package com.utn.tacs
 
 import cats.effect.{ConcurrentEffect, Timer}
-//import com.utn.tacs.domain.`match`.MatchService
-//import com.utn.tacs.domain.auth.Auth
-//import com.utn.tacs.infrastructure.endpoint.MatchEndpoints
-//import com.utn.tacs.infrastructure.endpoint.{AdminEndpoints, AuthEndpoints, DeckEndpoints, MatchEndpoints}
-import org.http4s.server.Router
-//import com.utn.tacs.domain.cards.CardApiRequester
-import com.utn.tacs.domain.cards.CardEndpoints
+import com.utn.tacs.domain.cards.{CardEndpoints, CardRepository, CardService, CardValidation}
 import fs2.Stream
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.client.middleware.FollowRedirect
 import org.http4s.implicits._
+import org.http4s.server.Router
 import org.http4s.server.blaze.BlazeServerBuilder
-import org.http4s.server.middleware.Logger
+import org.http4s.server.middleware.{CORS, CORSConfig, Logger}
 
 import scala.concurrent.ExecutionContext.global
+import scala.concurrent.duration._
+
 
 object Server {
 
-  def stream[F[_] : ConcurrentEffect](implicit T: Timer[F]): Stream[F, Nothing] = {
+  def stream[F[+_] : ConcurrentEffect](implicit T: Timer[F]): Stream[F, Nothing] = {
     for {
       preClient <- BlazeClientBuilder[F](global).stream
       client = FollowRedirect(3)(preClient)
 
-//      authAlg = Auth.impl[F]
-//      matchServiceImpl = MatchService.impl[F]
-      //      cardApiRequester = CardApiRequester.impl[F](client)
+      cardRepo = CardRepository()
+      cardValidator = CardValidation(cardRepo)
+      cardService = CardService(cardRepo, cardValidator, client)
+      cardEndpoints = CardEndpoints[F](cardRepo, cardService)
+      methodConfig = CORSConfig(
+        anyOrigin = true,
+        anyMethod = false,
+        allowedMethods = Some(Set("GET", "POST")),
+        allowCredentials = true,
+        maxAge = 1.day.toSeconds)
+      corsCardEndpoint = CORS(cardEndpoints, methodConfig)
 
       httpApp = Router(
-        //        "/admin" -> AdminEndpoints.routes(),
-        //        "/auth" -> AuthEndpoints.authRoutes(authAlg),
-        //        "/decks" -> DeckEndpoints.decksRoutes(),
-//        "/matches" -> MatchEndpoints.matchRoutes(matchServiceImpl),
-        "/superhero" -> CardEndpoints[F](client),
-        //        "/cards" -> CardEndpoints.cardsRoutes(cardApiRequester)
+        "/superhero" -> corsCardEndpoint
       ).orNotFound
 
       finalHttpApp = Logger.httpApp(logHeaders = true, logBody = false)(httpApp)
