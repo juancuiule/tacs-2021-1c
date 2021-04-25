@@ -21,4 +21,7 @@ final case class Card(
                        powerstats: PowerStats,
                        image: Image,
                        biography: Option[Biography] = None
-                     )
+                     ) {
+
+
+}

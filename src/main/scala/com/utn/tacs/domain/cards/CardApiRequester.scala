@@ -25,7 +25,10 @@ object CardRepository {
       .toList
   }
 
-  def add(card: Card): Unit = cache += (card.id -> card)
+  def add(card: Card): Unit = {
+    cache += (card.id -> card)
+
+  }
 
   def addAll(cards: List[Card]): Unit = cache ++= (cards map (card => (card.id, card)))
 
@@ -38,14 +41,23 @@ case object CardNotFoundError extends Product with Serializable
 trait CardApiRequester[F[_]] {
   def getByName(name: String): F[List[Card]]
 
-  def getById(id: Int): F[Card]
+  def getById(id: Int): Option[Card]
 }
+
+
+sealed trait ExternalApiResponse
+
+final case class SearchResponse(results: List[Card]) extends ExternalApiResponse
+
+final case class ApiResponseError(response: String, error: String) extends ExternalApiResponse
+
 
 object CardApiRequester {
   val baseUri = uri"https://superheroapi.com/"
 
   // TODO: podria ser un metodo, que de una excepcion más legible si no encuentra a api_key
-  val uriWithKey: Uri = baseUri.withPath("api/" + scala.util.Properties.envOrElse("SUPERHERO_API_KEY", "") + "/")
+//  val uriWithKey: Uri = baseUri.withPath("api/" + scala.util.Properties.envOrElse("SUPERHERO_API_KEY", "") + "/")
+  val uriWithKey: Uri = baseUri.withPath("api/" + "4157956970883904" + "/")
 
 
   def apply[F[_]](implicit ev: CardApiRequester[F]): CardApiRequester[F] = ev
@@ -59,16 +71,22 @@ object CardApiRequester {
     import dsl._
 
 
-    def getById(id: Int): F[Card] = {
+    def getById(id: Int): Option[Card] = {
       val card = CardRepository get id
       card match {
-        case Some(card) => card.pure[F]
+        case Some(card) => Some(card)
         case None => getCardFromSuperHeroAPI(id)
       }
     }
 
-    private def getCardFromSuperHeroAPI(id: Int): F[Card] = C.expect[Card](GET(uriWithKey / id.toString)).adaptError({ case t => CardError(t) })
-
+    // FIXME
+    private def getCardFromSuperHeroAPI(id: Int): Option[Card] = {
+      for { // no entra nunca a este for
+        card <- C.fetchAs[Card](GET(uriWithKey / id.toString)).adaptError({ case t => CardError(t) })
+        _ <- CardRepository.add(card).pure[F]
+      } yield card
+      CardRepository get id
+    }
 
 
     def getByName(name: String): F[List[Card]] = {
@@ -81,10 +99,12 @@ object CardApiRequester {
 
     private def getCardFromSuperHeroAPIByName(name: String): F[List[Card]] = C.expect[SearchResponse](GET(uriWithKey / "search/" / name)).adaptError({ case t => CardError(t) }) map { c => c.results }
 
+
   }
 
   final case class SearchResponse(results: List[Card]) extends AnyVal
 
   final case class CardError(e: Throwable) extends RuntimeException
+
 
 }
