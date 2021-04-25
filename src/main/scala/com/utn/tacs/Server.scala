@@ -1,7 +1,9 @@
 package com.utn.tacs
 
 import cats.effect.{ConcurrentEffect, Timer}
-import com.utn.tacs.domain.cards.{CardEndpoints, CardRepository, CardService, CardValidation}
+import com.utn.tacs.domain.cards._
+import com.utn.tacs.infrastructure.endpoint.{CardEndpoints, SuperheroEndpoints}
+import com.utn.tacs.infrastructure.repository.memory.CardMemoryRepository
 import fs2.Stream
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.client.middleware.FollowRedirect
@@ -21,20 +23,24 @@ object Server {
       preClient <- BlazeClientBuilder[F](global).stream
       client = FollowRedirect(3)(preClient)
 
-      cardRepo = CardRepository()
+      cardRepo = CardMemoryRepository()
       cardValidator = CardValidation(cardRepo)
-      cardService = CardService(cardRepo, cardValidator, client)
+      cardService = CardService(cardRepo, cardValidator)
       cardEndpoints = CardEndpoints[F](cardRepo, cardService)
-      methodConfig = CORSConfig(
-        anyOrigin = true,
-        anyMethod = false,
-        allowedMethods = Some(Set("GET", "POST")),
-        allowCredentials = true,
-        maxAge = 1.day.toSeconds)
-      corsCardEndpoint = CORS(cardEndpoints, methodConfig)
+
+      corsConfig = CORSConfig(
+        anyOrigin = false,
+        allowCredentials = false,
+        maxAge = 1.day.toSeconds,
+        allowedOrigins = List("http://localhost:3000").contains(_)
+      )
+
+      superheroService = SuperheroAPIService(client)
+      superheroEndpoints = SuperheroEndpoints[F](superheroService)
 
       httpApp = Router(
-        "/superhero" -> corsCardEndpoint
+        "/cards" -> CORS(cardEndpoints, corsConfig),
+        "/superheros" -> CORS(superheroEndpoints, corsConfig)
       ).orNotFound
 
       finalHttpApp = Logger.httpApp(logHeaders = true, logBody = false)(httpApp)
