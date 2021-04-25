@@ -25,6 +25,8 @@ class CardMemoryRepository[F[_] : Applicative] extends CardRepository[F] {
 
   def get(id: Int): F[Option[Card]] = cache.get(id).pure[F]
 
+  def getAll: F[List[Card]] = cache.values.toList.pure[F]
+
   def delete(id: Int): F[Option[Card]] = cache.remove(id).pure[F]
 
   def findByName(name: String): F[Set[Card]] =

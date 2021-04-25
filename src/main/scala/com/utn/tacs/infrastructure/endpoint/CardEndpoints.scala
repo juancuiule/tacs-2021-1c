@@ -48,6 +48,11 @@ class CardEndpoints[F[+_] : Sync](repository: CardRepository[F], service: CardSe
             ("cards", cards.asJson)
           ))
         } yield resp
+      case GET -> Root / "publishers" =>
+        for {
+          publishers <- service.getPublishers
+          resp <- Ok(Json.obj(("publishers", publishers.asJson)))
+        } yield resp
     }
 
   object PublisherQueryParamMatcher extends OptionalQueryParamDecoderMatcher[String]("publisher")

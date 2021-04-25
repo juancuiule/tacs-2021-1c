@@ -9,6 +9,8 @@ trait CardRepository[F[_]] {
 
   def get(id: Int): F[Option[Card]]
 
+  def getAll: F[List[Card]]
+
   def delete(id: Int): F[Option[Card]]
 
   def findByName(name: String): F[Set[Card]]
