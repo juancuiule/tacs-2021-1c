@@ -56,8 +56,8 @@ object CardApiRequester {
   val baseUri = uri"https://superheroapi.com/"
 
   // TODO: podria ser un metodo, que de una excepcion más legible si no encuentra a api_key
-//  val uriWithKey: Uri = baseUri.withPath("api/" + scala.util.Properties.envOrElse("SUPERHERO_API_KEY", "") + "/")
-  val uriWithKey: Uri = baseUri.withPath("api/" + "4157956970883904" + "/")
+  val uriWithKey: Uri = baseUri.withPath("api/" + scala.util.Properties.envOrElse("SUPERHERO_API_KEY", "") + "/")
+
 
 
   def apply[F[_]](implicit ev: CardApiRequester[F]): CardApiRequester[F] = ev
