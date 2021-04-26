@@ -18,6 +18,8 @@ case object ApiUnknownError extends SuperheroApiError
 
 final case class SearchResponse(results: List[Card])
 
+final case class SuperheroSearchResponse(results: List[Superhero])
+
 final case class ApiResponseError(response: String, error: String)
 
 class SuperheroAPIService[F[+_] : Sync](C: Client[F]) {
@@ -30,6 +32,15 @@ class SuperheroAPIService[F[+_] : Sync](C: Client[F]) {
   def getById(id: Int): F[Option[Card]] = {
     C.get(uriWithKey / id.toString) {
       case r@Response(Status.Ok, _, _, _, _) => r.attemptAs[Card].fold(_ => None, Some(_))
+      case _ => None.pure[F]
+    }
+  }
+
+  def searchSuperheroByName(searchName: String): F[Option[List[Superhero]]] = {
+    C.get(uriWithKey / "search/" / searchName) {
+      case r@Response(Status.Ok, _, _, _, _) => {
+        r.attemptAs[SuperheroSearchResponse].fold(_ => None, _.results.some)
+      }
       case _ => None.pure[F]
     }
   }

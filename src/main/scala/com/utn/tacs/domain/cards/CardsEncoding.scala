@@ -11,10 +11,14 @@ import org.http4s.{EntityDecoder, MediaType}
 case object CardsEncoding {
   val invalidStatsValues: List[String] = List("null", "0 kg", "0 cm", "-")
 
+  implicit def shEntityDecoder[F[_]](implicit S: Sync[F]): EntityDecoder[F, Superhero] = jsonOf
+
   implicit def cardEntityDecoder[F[_]](implicit S: Sync[F]): EntityDecoder[F, Card] =
     jsonOfWithMedia(MediaType.application.json)(S, cardDecoder)
 
   implicit def searchDecoder[F[_]](implicit S: Sync[F]): EntityDecoder[F, SearchResponse] = jsonOf[F, SearchResponse]
+
+  implicit def shSearchDecoder[F[_]](implicit S: Sync[F]): EntityDecoder[F, SuperheroSearchResponse] = jsonOf[F, SuperheroSearchResponse]
 
   implicit def apiResponseErrorDecoder[F[_]](implicit S: Sync[F]): EntityDecoder[F, ApiResponseError] = jsonOf[F, ApiResponseError]
 
