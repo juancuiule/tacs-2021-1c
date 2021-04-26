@@ -11,13 +11,13 @@ import org.http4s.circe.{jsonOf, _}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.{EntityDecoder, HttpRoutes}
 
-class CardEndpoints[F[+_] : Sync](repository: CardRepository[F], service: CardService[F]) extends Http4sDsl[F] {
+class CardEndpoints[F[+_] : Sync](repository: CardRepository, service: CardService[F]) extends Http4sDsl[F] {
 
   implicit val cardDecoder: EntityDecoder[F, Card] = jsonOf
   val getCardEndpoint: HttpRoutes[F] =
     HttpRoutes.of[F] {
       case GET -> Root / IntVar(id) =>
-        repository.get(id).flatMap {
+        repository.get(id).pure[F].flatMap {
           case Some(card) => Ok(card.asJson)
           case None => NotFound()
         }
@@ -64,7 +64,7 @@ class CardEndpoints[F[+_] : Sync](repository: CardRepository[F], service: CardSe
 }
 
 object CardEndpoints {
-  def apply[F[+_] : Sync](repository: CardRepository[F],
+  def apply[F[+_] : Sync](repository: CardRepository,
                           service: CardService[F]): HttpRoutes[F] =
     new CardEndpoints[F](repository, service).endpoints()
 }
