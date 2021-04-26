@@ -18,6 +18,7 @@ case object CardsEncoding {
 
   implicit def apiResponseErrorDecoder[F[_]](implicit S: Sync[F]): EntityDecoder[F, ApiResponseError] = jsonOf[F, ApiResponseError]
 
+
   implicit val cardDecoder: Decoder[Card] = (c: HCursor) => for {
     id <- c.downField("id").as[Int]
     fullName <- c.downField("biography").downField("full-name").as[String]
@@ -44,7 +45,7 @@ case object CardsEncoding {
       strength.toInt).some
     val bio: Option[Biography] = if (List(fullName, publisher).exists(invalidStatsValues.contains(_))) None else Biography(fullName, publisher).some
 
-    Card(id.some, name, stats, imageUrl, bio)
+    Card(id, name, stats, imageUrl, bio)
   }
 
 }

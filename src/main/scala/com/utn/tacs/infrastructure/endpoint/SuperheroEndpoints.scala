@@ -3,6 +3,7 @@ package com.utn.tacs.infrastructure.endpoint
 import cats.effect.Sync
 import cats.implicits._
 import com.utn.tacs.domain.cards._
+import io.circe.Json
 import io.circe.generic.auto._
 import io.circe.syntax._
 import org.http4s.HttpRoutes
@@ -14,17 +15,16 @@ class SuperheroEndpoints[F[+_] : Sync](service: SuperheroAPIService[F]) extends 
     HttpRoutes.of[F] {
       case GET -> Root / IntVar(id) =>
         service.getById(id).flatMap {
-          case Right(card) => Ok(card.asJson)
-          case Left(_) => NotFound(s"superhero with id: $id, not found")
+          case Some(superhero) => Ok(superhero.asJson)
+          case None => NotFound(s"superhero with id: $id, not found")
         }
       case GET -> Root / "name" / searchName =>
         val actionResult = service.searchByName(searchName)
         actionResult.flatMap {
-          case Right(cards: SearchResponse) => Ok(cards.asJson)
-          case Left(SuperheroApiResponseParseError) => InternalServerError("parse error")
-          case Left(SuperheroApiNotFoundError) => NotFound(s"$searchName not found")
-          case Left(SuperheroApiBadNameSearchError) => InternalServerError("bad name search")
-          case Left(ApiUnknownError) => InternalServerError()
+          case Some(superheros) => Ok(Json.obj(
+            ("superheros", superheros.asJson)
+          ))
+          case None => NotFound(s"")
         }
     }
 }

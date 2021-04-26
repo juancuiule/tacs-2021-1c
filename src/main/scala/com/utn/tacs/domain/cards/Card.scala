@@ -10,12 +10,10 @@ final case class Stats(
                         strength: Int,
                       )
 
-
 final case class Biography(fullName: String, publisher: String)
 
-
 final case class Card(
-                       id: Option[Int] = None,
+                       id: Int,
                        name: String,
                        stats: Option[Stats] = None,
                        image: String,

@@ -5,23 +5,19 @@ import cats.implicits._
 import com.utn.tacs.domain.cards.{Card, CardRepository}
 
 import scala.collection.concurrent.TrieMap
-import scala.util.Random
 
 class CardMemoryRepository[F[_] : Applicative] extends CardRepository[F] {
   private val cache = new TrieMap[Int, Card]()
-  private val random = new Random()
 
   def create(card: Card): F[Card] = {
-    val id = random.nextInt()
-    val toSave = card.copy(id = id.some)
-    cache addOne (id -> toSave)
-    toSave.pure[F]
+    (cache addOne (card.id -> card))
+    card.pure[F]
   }
 
   def findByPublisher(publisher: String): F[List[Card]] =
     cache.values.filter(_.biography.exists(_.publisher.toLowerCase.contains(publisher.toLowerCase))).toList.pure[F]
 
-  def update(card: Card): F[Option[Card]] = cache.replace(card.id.get, card).pure[F]
+  def update(card: Card): F[Option[Card]] = cache.replace(card.id, card).pure[F]
 
   def get(id: Int): F[Option[Card]] = cache.get(id).pure[F]
 
