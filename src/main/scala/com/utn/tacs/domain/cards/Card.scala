@@ -1,13 +1,21 @@
 package com.utn.tacs.domain.cards
 
-final case class PowerStats(intelligence: String,
-                            strength: String,
-                            speed: String,
-                            durability: String,
-                            power: String,
-                            combat: String
-                           )
+final case class Stats(
+                        height: Int,
+                        weight: Int,
+                        intelligence: Int,
+                        speed: Int,
+                        power: Int,
+                        combat: Int,
+                        strength: Int,
+                      )
 
-final case class Image(url: String)
+final case class Biography(fullName: String, publisher: String)
 
-final case class Card(id: String, name: String, powerstats: PowerStats, image: Image)
+final case class Card(
+                       id: Int,
+                       name: String,
+                       stats: Option[Stats] = None,
+                       image: String,
+                       biography: Option[Biography] = None
+                     )
