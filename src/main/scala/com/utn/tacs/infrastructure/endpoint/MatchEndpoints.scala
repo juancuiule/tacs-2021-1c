@@ -3,6 +3,7 @@ package com.utn.tacs.infrastructure.endpoint
 import cats.effect.Sync
 import cats.implicits._
 import com.utn.tacs.domain.`match`.{Match, MatchService}
+import com.utn.tacs.infrastructure.repository.MatchNotFoundError
 import io.circe.Json
 import io.circe.generic.auto._
 import io.circe.syntax._
@@ -33,11 +34,13 @@ object MatchEndpoints {
         for {
           payload <- req.as[Map[String, String]]
           loserPlayer = payload("loser_player_id")
-          withdrawResult <- matchServiceImpl.withdraw(matchId, loserPlayer)
-          resp <- Accepted(withdrawResult.asJson)
+          withDrawResult = matchServiceImpl.withdraw(matchId, loserPlayer)
+          resp <- withDrawResult match {
+            case Left(MatchNotFoundError) => NotFound()
+            case Right(m) => Accepted(m.asJson)
+          }
         } yield resp
-      case GET -> Root / matchId / "replay" => {
-        print(matchId)
+      case GET -> Root / matchId / "replay" =>
         for {
           resp <- Ok(Json.obj(
             ("plays", List(
@@ -47,7 +50,6 @@ object MatchEndpoints {
             ).asJson)
           ))
         } yield resp
-      }
     }
   }
 }

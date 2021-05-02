@@ -2,33 +2,50 @@ package com.utn.tacs.domain.`match`
 
 import cats.Applicative
 import cats.implicits.catsSyntaxApplicativeId
+import com.utn.tacs.infrastructure.repository.{MatchNotFoundError, MatchRepository}
+
+import scala.util.Random
 
 trait MatchService[F[_]] {
   def createMatch(player1Id: String, player2Id: String, deckId: String): F[Match]
 
   def getMatch(matchId: String): Option[Match]
 
-  def withdraw(matchId: String, loserPlayer: String): F[Match]
+  def withdraw(matchId: String, loserPlayer: String): Either[MatchError, Match]
 }
 
 
 object MatchService {
 
+  private val repo: MatchRepository = MatchRepository
+
   def impl[F[_] : Applicative]: MatchService[F] = new MatchService[F] {
+
     def createMatch(player1Id: String, player2Id: String, deckId: String): F[Match] = {
-      Match("match_id_test", player1Id, player2Id, deckId, "active", "no_winner_yet").pure[F]
+      val matchId = Random.alphanumeric.take(15).mkString("")
+      val newMatch = Match(matchId, player1Id, player2Id, deckId, "active", "no_winner_yet")
+      repo.createMatch(newMatch).pure[F]
     }
 
     override def getMatch(matchId: String): Option[Match] = {
-      //TODO: validar que los playerID existan y  que deckId exista
-      val matchVal = new Match(matchId, "pepe", "roberto", "marvel_heroes", "active", "")
-      Some(matchVal)
+      repo.getMatch(matchId)
     }
 
-    override def withdraw(matchId: String, loserPlayer: String): F[Match] = {
-      //TODO:implementar
-      println(s"player: ${loserPlayer} withdraws the match: ${matchId}")
-      Match(matchId, loserPlayer, "winner_player", "marvel", "finished", "winner_player").pure[F]
+    override def withdraw(matchId: String, loserPlayer: String): Either[MatchError, Match] = {
+      repo.getMatch(matchId)
+        .map(m => {
+          m.status = "finished"
+          if (m.player1Id.equals(loserPlayer)) {
+            m.winnerId = m.player2Id
+          } else {
+            m.winnerId = m.player1Id
+          }
+          val updateResult = repo.updateMatch(m)
+          updateResult match {
+            case Left(e) => Left(e)
+            case Right(v) => Right(v)
+          }
+        }).getOrElse(Left(MatchNotFoundError))
     }
   }
 
