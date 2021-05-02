@@ -8,12 +8,11 @@ class CardMemoryRepository extends CardRepository {
   private val cache = new TrieMap[Int, Card]()
 
   def create(card: Card): Card = {
-    (cache addOne (card.id -> card))
+    cache addOne (card.id -> card)
     card
   }
 
-  def findByPublisher(publisher: String): List[Card] =
-    cache.values.filter(_.biography.exists(_.publisher.toLowerCase.contains(publisher.toLowerCase))).toList
+  def findByPublisher(publisher: String): List[Card] = cache.values.filter(_.biography.publisher.contains(publisher.toLowerCase)).toList
 
   def update(card: Card): Option[Card] = cache.replace(card.id, card)
 

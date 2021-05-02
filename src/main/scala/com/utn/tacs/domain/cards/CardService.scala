@@ -31,7 +31,9 @@ class CardService[F[+_] : Applicative](
   def get(id: Int)(implicit FF: Sync[F]): EitherT[F, CardNotFoundError.type, Card] = EitherT.fromOptionF(repository.get(id).pure[F], CardNotFoundError)
 
   def getPublishers: F[List[String]] = {
-    repository.getAll.mapFilter(card => card.biography.map(_.publisher)).distinct.pure[F]
+    repository.getAll.map(card => card.biography.publisher)
+      .distinct
+      .pure[F]
   }
 
   def getByName(name: String): F[Set[Card]] = repository.findByName(name).pure[F]

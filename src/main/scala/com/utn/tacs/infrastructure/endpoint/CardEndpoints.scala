@@ -41,6 +41,7 @@ class CardEndpoints[F[+_] : Sync](repository: CardRepository, service: CardServi
           case Right(card) => Ok(card.asJson)
           case Left(CardAlreadyExistsError(card)) => Conflict(card.asJson)
         }
+
       case GET -> Root :? PublisherQueryParamMatcher(publisher) => // +& PageSizeQueryParamMatcher(_) +& OffsetQueryParamMatcher(_) =>
         for {
           cards <- service.getByPublisher(publisher.getOrElse("")) // service.getAll(pageSize.getOrElse(100), offset.getOrElse(0))

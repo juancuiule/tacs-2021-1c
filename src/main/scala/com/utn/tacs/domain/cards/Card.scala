@@ -15,7 +15,7 @@ final case class Biography(fullName: String, publisher: String)
 final case class Card(
                        id: Int,
                        name: String,
-                       stats: Option[Stats] = None,
+                       stats: Stats,
                        image: String,
-                       biography: Option[Biography] = None
+                       biography: Biography
                      )
