@@ -1,12 +1,12 @@
 
-const CreateDeck = () => (
+const Decks = () => (
   <div className="container">
     <main>
       <h1 className="title">
-        Crear mazo
+        Mazos
       </h1>
     </main>
   </div>
 )
 
-export default CreateDeck
+export default Decks
