@@ -2,50 +2,46 @@ package com.utn.tacs.infrastructure.endpoint
 
 import cats.effect.Sync
 import cats.implicits._
+import com.utn.tacs.domain.deck.{Deck, DeckRepository, DeckService}
 import io.circe.Json
+import io.circe.generic.auto._
 import io.circe.syntax._
-import org.http4s.HttpRoutes
-import org.http4s.circe._
+import org.http4s.circe.{jsonOf, _}
 import org.http4s.dsl.Http4sDsl
+import org.http4s.{EntityDecoder, HttpRoutes}
 
-object DeckEndpoints {
-  def decksRoutes[F[_] : Sync](): HttpRoutes[F] = {
-    val dsl = new Http4sDsl[F] {}
-    import dsl._
+class DeckEndpoints[F[+_] : Sync](repository: DeckRepository[F], service: DeckService[F]) extends Http4sDsl[F] {
 
-    val jsonCard = Json.obj(
-      ("id", Json.fromString("1")),
-      ("name", Json.fromString("Batman")),
-      ("powerstats", Json.obj())
-    )
+  implicit val deckDecoder: EntityDecoder[F, Deck] = jsonOf
 
-    val jsonDeck = (id: String) => Json.obj(
-      ("id", Json.fromString(id)),
-      ("name", Json.fromString("deckDc")),
-      ("cards", List(jsonCard, jsonCard, jsonCard).asJson)
-    )
-
+  def endpoints(): HttpRoutes[F] =
     HttpRoutes.of[F] {
-      case POST -> Root =>
+      case req@POST -> Root =>
         for {
-          resp <- Created(jsonDeck("1"))
+          post <- req.as[Deck]
+          c <- service.create(post)
+          resp <- Created(c.asJson)
         } yield resp
       case GET -> Root =>
         for {
-          resp <- Ok(Json.obj(("decks", List(jsonDeck("1"), jsonDeck("2")).asJson)))
+          decks <- repository.getAll
+          resp <- Ok(Json.obj(("decks", decks.asJson)))
         } yield resp
-      case GET -> Root / id =>
+      case GET -> Root / IntVar(id) =>
         for {
-          resp <- Ok(jsonDeck(id))
-        } yield resp
-      case DELETE -> Root / id =>
-        for {
-          resp <- Ok(s"deleted deck with id: ${id}")
-        } yield resp
-      case PATCH -> Root / id =>
-        for {
-          resp <- Ok(jsonDeck(id))
+          optionDeck <- service.get(id)
+          resp <- optionDeck match {
+            case Some(deck) => Ok(deck.asJson)
+            case None => NotFound()
+          }
         } yield resp
     }
-  }
+
+
+}
+
+object DeckEndpoints {
+  def apply[F[+_] : Sync](repository: DeckRepository[F],
+                          service: DeckService[F]): HttpRoutes[F] =
+    new DeckEndpoints[F](repository, service).endpoints()
 }
