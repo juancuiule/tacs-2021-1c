@@ -26,7 +26,8 @@ object Server {
       cardRepo = CardMemoryRepository()
       cardValidator = CardValidation(cardRepo)
       cardService = CardService(cardRepo, cardValidator)
-      cardEndpoints = CardEndpoints[F](cardRepo, cardService)
+      superheroService = SuperheroAPIService(client)
+      cardEndpoints = CardEndpoints[F](cardRepo, cardService, superheroService)
 
       corsConfig = CORSConfig(
         anyOrigin = false,
@@ -35,7 +36,7 @@ object Server {
         allowedOrigins = List("http://localhost:3000").contains(_)
       )
 
-      superheroService = SuperheroAPIService(client)
+
       superheroEndpoints = SuperheroEndpoints[F](superheroService)
 
       httpApp = Router(
