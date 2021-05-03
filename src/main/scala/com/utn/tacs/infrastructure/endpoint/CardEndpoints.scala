@@ -11,12 +11,12 @@ import org.http4s.circe.{jsonOf, _}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.{EntityDecoder, HttpRoutes}
 
-case class CardBlaBla(id: Int)
 
-class CardEndpoints[F[+_] : Sync](repository: CardRepository, cardSerice: CardService[F], superHeroeService: SuperheroAPIService[F]) extends Http4sDsl[F] {
+class CardEndpoints[F[+_] : Sync](repository: CardRepository, cardService: CardService[F], superHeroeService: SuperheroAPIService[F]) extends Http4sDsl[F] {
+  case class AddCardDTO(id: Int)
 
   implicit val cardDecoder: EntityDecoder[F, Card] = jsonOf
-  implicit val cardBla: EntityDecoder[F, CardBlaBla] = jsonOf
+  implicit val cardBla: EntityDecoder[F, AddCardDTO] = jsonOf
 
   val getCardEndpoint: HttpRoutes[F] =
     HttpRoutes.of[F] {
@@ -30,7 +30,7 @@ class CardEndpoints[F[+_] : Sync](repository: CardRepository, cardSerice: CardSe
   def endpoints(): HttpRoutes[F] =
     HttpRoutes.of[F] {
       case GET -> Root / IntVar(id) =>
-        val actionResult: EitherT[F, CardNotFoundError.type, Card] = cardSerice.get(id)
+        val actionResult: EitherT[F, CardNotFoundError.type, Card] = cardService.get(id)
         actionResult.value.flatMap {
           case Left(CardNotFoundError) => NotFound()
           case Right(card) => Ok(card.asJson)
@@ -39,7 +39,7 @@ class CardEndpoints[F[+_] : Sync](repository: CardRepository, cardSerice: CardSe
       // TODO: esto es para admins
       case req@POST -> Root =>
         val actionResult = for {
-          cardBlaBla <- req.as[CardBlaBla]
+          cardBlaBla <- req.as[AddCardDTO]
           maybeSuperhero <- superHeroeService.getById(cardBlaBla.id)
         } yield maybeSuperhero
 
@@ -55,14 +55,14 @@ class CardEndpoints[F[+_] : Sync](repository: CardRepository, cardSerice: CardSe
 
       case GET -> Root :? PublisherQueryParamMatcher(publisher) => // +& PageSizeQueryParamMatcher(_) +& OffsetQueryParamMatcher(_) =>
         for {
-          cards <- cardSerice.getByPublisher(publisher.getOrElse("")) // service.getAll(pageSize.getOrElse(100), offset.getOrElse(0))
+          cards <- cardService.getByPublisher(publisher.getOrElse("")) // service.getAll(pageSize.getOrElse(100), offset.getOrElse(0))
           resp <- Ok(Json.obj(
             ("cards", cards.asJson)
           ))
         } yield resp
       case GET -> Root / "publishers" =>
         for {
-          publishers <- cardSerice.getPublishers
+          publishers <- cardService.getPublishers
           resp <- Ok(Json.obj(("publishers", publishers.asJson)))
         } yield resp
     }
