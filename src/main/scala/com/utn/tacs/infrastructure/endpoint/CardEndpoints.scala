@@ -39,8 +39,8 @@ class CardEndpoints[F[+_] : Sync](repository: CardRepository, cardService: CardS
       // TODO: esto es para admins
       case req@POST -> Root =>
         val actionResult = for {
-          cardBlaBla <- req.as[AddCardDTO]
-          maybeSuperhero <- superHeroeService.getById(cardBlaBla.id)
+          addCardDTO <- req.as[AddCardDTO]
+          maybeSuperhero <- superHeroeService.getById(addCardDTO.id)
         } yield maybeSuperhero
 
         // TODO: mejores errores
