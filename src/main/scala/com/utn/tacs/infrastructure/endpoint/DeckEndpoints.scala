@@ -2,7 +2,7 @@ package com.utn.tacs.infrastructure.endpoint
 
 import cats.effect.Sync
 import cats.implicits._
-import com.utn.tacs.domain.deck.{Deck, DeckRepository, DeckService}
+import com.utn.tacs.domain.deck._
 import io.circe.Json
 import io.circe.generic.auto._
 import io.circe.syntax._
@@ -14,7 +14,7 @@ class DeckEndpoints[F[+_] : Sync](repository: DeckRepository[F], service: DeckSe
 
   implicit val deckDecoder: EntityDecoder[F, Deck] = jsonOf
   implicit val addCardDTODecoder: EntityDecoder[F, AddCardDTO] = jsonOf
-  implicit val createCardDTODecoder: EntityDecoder[F, CreateCardDTO] = jsonOf
+  implicit val createCardDTODecoder: EntityDecoder[F, CreateDeckDTO] = jsonOf
 
   def endpoints(): HttpRoutes[F] =
     HttpRoutes.of[F] {
@@ -22,7 +22,7 @@ class DeckEndpoints[F[+_] : Sync](repository: DeckRepository[F], service: DeckSe
       case req@POST -> Root =>
         val r = scala.util.Random
         for {
-          post <- req.as[CreateCardDTO]
+          post <- req.as[CreateDeckDTO]
           newDeck = Deck(id = r.nextInt(100), cards = Set(), name = post.name)
           c <- service.create(newDeck)
           resp <- Created(c.asJson)
@@ -67,10 +67,6 @@ class DeckEndpoints[F[+_] : Sync](repository: DeckRepository[F], service: DeckSe
         } yield resp
       }
     }
-
-  case class AddCardDTO(cardId: Int)
-
-  case class CreateCardDTO(name: String)
 
 }
 
