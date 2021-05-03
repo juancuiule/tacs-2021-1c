@@ -16,7 +16,7 @@ class CardEndpoints[F[+_] : Sync](repository: CardRepository, cardService: CardS
   case class AddCardDTO(id: Int)
 
   implicit val cardDecoder: EntityDecoder[F, Card] = jsonOf
-  implicit val cardBla: EntityDecoder[F, AddCardDTO] = jsonOf
+  implicit val addCardDTODecoder: EntityDecoder[F, AddCardDTO] = jsonOf
 
   val getCardEndpoint: HttpRoutes[F] =
     HttpRoutes.of[F] {
