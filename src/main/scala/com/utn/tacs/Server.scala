@@ -1,8 +1,9 @@
 package com.utn.tacs
 
 import cats.effect.{ConcurrentEffect, Timer}
+import com.utn.tacs.domain.`match`.MatchService
 import com.utn.tacs.domain.cards._
-import com.utn.tacs.infrastructure.endpoint.{CardEndpoints, SuperheroEndpoints}
+import com.utn.tacs.infrastructure.endpoint.{CardEndpoints, MatchEndpoints, SuperheroEndpoints}
 import com.utn.tacs.infrastructure.repository.memory.CardMemoryRepository
 import fs2.Stream
 import org.http4s.client.blaze.BlazeClientBuilder
@@ -27,6 +28,8 @@ object Server {
       cardValidator = CardValidation(cardRepo)
       cardService = CardService(cardRepo, cardValidator)
       cardEndpoints = CardEndpoints[F](cardRepo, cardService)
+      matchEndpoints = MatchEndpoints[F](MatchService.impl)
+
 
       corsConfig = CORSConfig(
         anyOrigin = false,
@@ -40,13 +43,14 @@ object Server {
 
       httpApp = Router(
         "/cards" -> CORS(cardEndpoints, corsConfig),
-        "/superheros" -> CORS(superheroEndpoints, corsConfig)
+        "/superheros" -> CORS(superheroEndpoints, corsConfig),
+        "/matches" -> CORS(matchEndpoints)
       ).orNotFound
 
       finalHttpApp = Logger.httpApp(logHeaders = true, logBody = false)(httpApp)
 
       exitCode <- BlazeServerBuilder[F](global)
-        .bindHttp(8080, "0.0.0.0")
+        .bindHttp(8080, "127.0.0.1")
         .withHttpApp(finalHttpApp)
         .serve
     } yield exitCode
