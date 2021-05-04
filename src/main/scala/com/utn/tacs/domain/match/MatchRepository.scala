@@ -6,6 +6,8 @@ trait MatchRepository {
   def createMatch(newMatch: Match): Match
 
   def updateMatch(upMatch: Match): Either[MatchError, Match]
+
+  def getMatchRounds(matchId: String): List[Round]
 }
 
 trait MatchError extends Serializable with Product

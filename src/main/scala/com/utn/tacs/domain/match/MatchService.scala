@@ -12,6 +12,8 @@ trait MatchService[F[_]] {
   def getMatch(matchId: String): Option[Match]
 
   def withdraw(matchId: String, loserPlayer: String): Either[MatchError, Match]
+
+  def getPlayedRounds(matchId: String): List[Round]
 }
 
 
@@ -47,7 +49,9 @@ object MatchService {
           }
         }).getOrElse(Left(MatchNotFoundError))
     }
+
+    override def getPlayedRounds(matchId: String): List[Round] = {
+      repo.getMatchRounds(matchId)
+    }
   }
-
-
 }
