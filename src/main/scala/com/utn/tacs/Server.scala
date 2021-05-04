@@ -4,9 +4,10 @@ import cats.effect.{ConcurrentEffect, ContextShift, Resource, Timer}
 import com.utn.tacs.domain.`match`.MatchService
 import com.utn.tacs.domain.auth.Auth
 import com.utn.tacs.domain.cards._
+import com.utn.tacs.domain.deck._
 import com.utn.tacs.domain.user.{UserService, UserValidation}
-import com.utn.tacs.infrastructure.endpoint.{CardEndpoints, MatchEndpoints, SuperheroEndpoints, UserEndpoints}
-import com.utn.tacs.infrastructure.repository.memory.{AuthMemoryRepository, CardMemoryRepository, UserMemoryRepository}
+import com.utn.tacs.infrastructure.endpoint._
+import com.utn.tacs.infrastructure.repository.memory.{AuthMemoryRepository, CardMemoryRepository, DeckMemoryRepository, UserMemoryRepository}
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.client.middleware.FollowRedirect
 import org.http4s.implicits._
@@ -44,6 +45,10 @@ object Server {
 
       userEndpoints = UserEndpoints.endpoints[F, BCrypt, HMACSHA256](userService, BCrypt.syncPasswordHasher[F], routeAuth)
 
+      deckRepo = DeckMemoryRepository()
+      deckService = DeckService(deckRepo)
+      deckEndpoints = DeckEndpoints[F, HMACSHA256](deckRepo, deckService, routeAuth)
+
       corsConfig = CORSConfig(
         anyOrigin = false,
         allowCredentials = false,
@@ -57,6 +62,7 @@ object Server {
       httpApp = Router(
         "/cards" -> CORS(cardEndpoints, corsConfig),
         "/superheros" -> CORS(superheroEndpoints, corsConfig),
+        "/decks" -> CORS(deckEndpoints, corsConfig),
         "/users" -> CORS(userEndpoints, corsConfig),
         "/matches" -> CORS(matchEndpoints, corsConfig)
       ).orNotFound

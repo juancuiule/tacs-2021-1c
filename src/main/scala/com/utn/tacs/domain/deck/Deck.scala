@@ -1,5 +1,3 @@
 package com.utn.tacs.domain.deck
 
-class Deck {
-
-}
+case class Deck(id: Int, name: String, cards: Set[Int])
