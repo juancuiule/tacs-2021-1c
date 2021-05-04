@@ -47,7 +47,7 @@ object Server {
 
       deckRepo = DeckMemoryRepository()
       deckService = DeckService(deckRepo)
-      deckEndpoints = DeckEndpoints[F](deckRepo, deckService)
+      deckEndpoints = DeckEndpoints[F, HMACSHA256](deckRepo, deckService, routeAuth)
 
       corsConfig = CORSConfig(
         anyOrigin = false,
