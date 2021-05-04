@@ -120,6 +120,63 @@ response:
 
 
 
+
+## Superheros
+---
+`GET /superheros/name/:searchName` - Trae superheroes que tienen ese searchName dentro de su nombre
+
+`GET /superheros/name/man`
+repsonse:
+```json
+{
+  "superheros": [
+    {
+      "id": 641,
+      "name": "Superboy",
+      "stats": {
+        "height": 170,
+        "weight": 68,
+        "intelligence": 75,
+        "speed": 83,
+        "power": 95,
+        "combat": 60,
+        "strength": 95
+      },
+      "image": "https://www.superherodb.com/pictures2/portraits/10/100/789.jpg",
+      "biography": {
+        "fullName": "Kon-El / Conner Kent",
+        "publisher": "DC Comics"
+      }
+    },
+    ...
+  ]
+}
+```
+---
+`GET /superheros/:id` - Trae superheroe con ese id
+
+```json
+{
+  "id": 641,
+  "name": "Superboy",
+  "stats": {
+    "height": 170,
+    "weight": 68,
+    "intelligence": 75,
+    "speed": 83,
+    "power": 95,
+    "combat": 60,
+    "strength": 95
+  },
+  "image": "https://www.superherodb.com/pictures2/portraits/10/100/789.jpg",
+  "biography": {
+    "fullName": "Kon-El / Conner Kent",
+    "publisher": "DC Comics"
+  }
+}
+```
+
+
 ## Decks
 ---
 `GET /decks/:id` - Trae el mazo con ese id
