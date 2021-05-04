@@ -13,3 +13,196 @@
 * Esperar hasta que se genere el build y corra el container
 * Cuando veas un mensaje similar a `http4s v0.21.16 on blaze v0.14.14 started at http://0.0.0.0:8080/`, el server está corriendo y podés acceder a la API con la URL [http://localhost:8080/](http://localhost:8080/)
 
+## Endpoints
+
+## Cards
+
+---
+
+`GET /cards/` - Trae todas las cartas en el sistema
+```json
+{
+  "cards": [
+    {
+      "id": 69,
+      "name": "Batman",
+      "stats": {
+          "height": 178,
+          "weight": 77,
+          "intelligence": 81,
+          "speed": 29,
+          "power": 63,
+          "combat": 90,
+          "strength": 40
+      },
+      "image": "https://www.superherodb.com/pictures2/portraits/10/100/10441.jpg",
+      "biography": {
+          "fullName": "Terry McGinnis",
+          "publisher": "DC Comics"
+      }
+    },
+    ...
+  ]
+}
+```
+
+---
+
+`GET /cards/:id` - Trae una carta en particular
+```json
+{
+  "id": 69,
+  "name": "Batman",
+  "stats": {
+      "height": 178,
+      "weight": 77,
+      "intelligence": 81,
+      "speed": 29,
+      "power": 63,
+      "combat": 90,
+      "strength": 40
+  },
+  "image": "https://www.superherodb.com/pictures2/portraits/10/100/10441.jpg",
+  "biography": {
+      "fullName": "Terry McGinnis",
+      "publisher": "DC Comics"
+  }
+}
+```
+
+---
+
+`GET /cards/publishers` - Trae una lista de todos los publishers que tienen las cartas del sistema
+
+```json
+{
+  "publishers": [
+    "DC Comics",
+    "Marvel"
+  ]
+}
+```
+
+---
+
+`POST /cards` - Agrega una carta al sistema buscando al superheroe con ese id.
+
+Es solo para admins, va en un header "Authorization" el token del administrador.
+
+`Authorization: Bearer <token>`
+
+body:
+```json
+{ "id": 69 }
+```
+
+response:
+```json
+{
+  "id": 69,
+  "name": "Batman",
+  "stats": {
+      "height": 178,
+      "weight": 77,
+      "intelligence": 81,
+      "speed": 29,
+      "power": 63,
+      "combat": 90,
+      "strength": 40
+  },
+  "image": "https://www.superherodb.com/pictures2/portraits/10/100/10441.jpg",
+  "biography": {
+      "fullName": "Terry McGinnis",
+      "publisher": "DC Comics"
+  }
+}
+```
+
+
+
+## Decks
+---
+`GET /decks/:id` - Trae el mazo con ese id
+
+```json
+{
+  "id": 1,
+  "name": "Marvel Deck",
+  "cards": [
+    ...
+  ]
+}
+```
+---
+`GET /decks/` - Trae todos los mazos
+
+```json
+{
+  "decks": [
+    { "id": 1, "name": "Marvel Deck", "cards": [...] },
+    ...
+  ]
+}
+```
+---
+`PATCH /decks/:id` - Agrega una carta al mazo
+
+body:
+```json
+{ "cardId": 1 }
+```
+
+response:
+```json
+{
+  "id": 1,
+  "name": "Marvel Deck",
+  "cards": [
+    ...
+  ]
+}
+```
+---
+`DELETE /decks/:id` - Borra el mazo con ese id
+
+## Users / Auth
+---
+`POST /users/` - Crea un usuario con determinado rol
+
+body:
+```json
+{
+  "userName": "usuarioDePrueba",
+  "password": "passwordDePrueba",
+  "role": "Admin" | "Player" // esto cambiaría
+}
+```
+
+response:
+```json
+{
+    "userName": "usuarioDePrueba",
+    "id": 5118330560133248253,
+    "accessToken": "<token>"
+}
+```
+---
+`POST /users/login` - Devuelve un token que identifica al usuario para que pueda operar en el sistema.
+
+body:
+```json
+{
+  "userName": "usuarioDePrueba",
+  "password": "passwordDePrueba",
+}
+```
+
+response:
+```json
+{
+    "userName": "usuarioDePrueba",
+    "id": 5118330560133248253,
+    "accessToken": "<token>"
+}
+```
+
