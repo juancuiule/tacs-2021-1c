@@ -3,31 +3,49 @@ package com.utn.tacs.infrastructure.endpoint
 import cats.data.EitherT
 import cats.effect.Sync
 import cats.implicits._
+import com.utn.tacs.domain.auth.Auth
 import com.utn.tacs.domain.cards._
+import com.utn.tacs.domain.user.User
 import io.circe.Json
 import io.circe.generic.auto._
 import io.circe.syntax._
 import org.http4s.circe.{jsonOf, _}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.{EntityDecoder, HttpRoutes}
+import tsec.authentication.{AugmentedJWT, SecuredRequestHandler, _}
+import tsec.jwt.algorithms.JWTMacAlgo
 
 
-class CardEndpoints[F[+_] : Sync](repository: CardRepository, cardService: CardService[F], superHeroeService: SuperheroAPIService[F]) extends Http4sDsl[F] {
+class CardEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
+  repository: CardRepository,
+  cardService: CardService[F],
+  superHeroeService: SuperheroAPIService[F],
+  auth: SecuredRequestHandler[F, Long, User, AugmentedJWT[Auth, Long]]
+) extends Http4sDsl[F] {
+
   case class AddCardDTO(id: Int)
 
   implicit val cardDecoder: EntityDecoder[F, Card] = jsonOf
   implicit val addCardDTODecoder: EntityDecoder[F, AddCardDTO] = jsonOf
 
-  val getCardEndpoint: HttpRoutes[F] =
-    HttpRoutes.of[F] {
-      case GET -> Root / IntVar(id) =>
-        repository.get(id).pure[F].flatMap {
-          case Some(card) => Ok(card.asJson)
-          case None => NotFound()
-        }
-    }
+  private val addCardEndpoint: AuthEndpoint[F, Auth] = {
+    case req@POST -> Root asAuthed _ =>
+      val actionResult = for {
+        addCardDTO <- req.request.as[AddCardDTO]
+        maybeSuperhero <- superHeroeService.getById(addCardDTO.id)
+      } yield maybeSuperhero
 
-  def endpoints(): HttpRoutes[F] =
+      // TODO: mejores errores
+      actionResult.flatMap {
+        case None => BadRequest("The superheroe does not exist")
+        case Some(superhero: Superhero) => superhero.card match {
+          case Some(card) => Created(repository.create(card).asJson)
+          case None => BadRequest("The superheroe can't convert to card")
+        }
+      }
+  }
+
+  private val getCardEndpoint: HttpRoutes[F] =
     HttpRoutes.of[F] {
       case GET -> Root / IntVar(id) =>
         val actionResult: EitherT[F, CardNotFoundError.type, Card] = cardService.get(id)
@@ -35,24 +53,11 @@ class CardEndpoints[F[+_] : Sync](repository: CardRepository, cardService: CardS
           case Left(CardNotFoundError) => NotFound()
           case Right(card) => Ok(card.asJson)
         }
-
-      // TODO: esto es para admins
-      case req@POST -> Root =>
-        val actionResult = for {
-          addCardDTO <- req.as[AddCardDTO]
-          maybeSuperhero <- superHeroeService.getById(addCardDTO.id)
-        } yield maybeSuperhero
-
-        // TODO: mejores errores
-        actionResult.flatMap {
-          case None => BadRequest("The superheroe does not exist")
-          case Some(superhero: Superhero) => superhero.card match {
-            case Some(card) => Created(repository.create(card).asJson)
-            case None => BadRequest("The superheroe can't convert to card")
-          }
-        }
+    }
 
 
+  private val getCardsEndpoint: HttpRoutes[F] = {
+    HttpRoutes.of[F] {
       case GET -> Root :? PublisherQueryParamMatcher(publisher) => // +& PageSizeQueryParamMatcher(_) +& OffsetQueryParamMatcher(_) =>
         for {
           cards <- cardService.getByPublisher(publisher.getOrElse("")) // service.getAll(pageSize.getOrElse(100), offset.getOrElse(0))
@@ -60,12 +65,26 @@ class CardEndpoints[F[+_] : Sync](repository: CardRepository, cardService: CardS
             ("cards", cards.asJson)
           ))
         } yield resp
+    }
+  }
+
+  private val getPublishersEndpoint: HttpRoutes[F] = {
+    HttpRoutes.of[F] {
       case GET -> Root / "publishers" =>
         for {
           publishers <- cardService.getPublishers
           resp <- Ok(Json.obj(("publishers", publishers.asJson)))
         } yield resp
     }
+  }
+
+  def endpoints(): HttpRoutes[F] = {
+    val authEndpoints: AuthService[F, Auth] = {
+      Auth.adminOnly(addCardEndpoint)
+    }
+    val unauthEndpoints = getCardEndpoint <+> getCardsEndpoint <+> getPublishersEndpoint
+    unauthEndpoints <+> auth.liftService(authEndpoints)
+  }
 
   object PublisherQueryParamMatcher extends OptionalQueryParamDecoderMatcher[String]("publisher")
 
@@ -77,8 +96,11 @@ class CardEndpoints[F[+_] : Sync](repository: CardRepository, cardService: CardS
 
 
 object CardEndpoints {
-  def apply[F[+_] : Sync](repository: CardRepository,
-                          cardService: CardService[F],
-                          superHeroeService: SuperheroAPIService[F]): HttpRoutes[F] =
-    new CardEndpoints[F](repository, cardService, superHeroeService).endpoints()
+  def apply[F[+_] : Sync, Auth: JWTMacAlgo](
+    repository: CardRepository,
+    cardService: CardService[F],
+    superHeroeService: SuperheroAPIService[F],
+    auth: SecuredRequestHandler[F, Long, User, AugmentedJWT[Auth, Long]]
+  ): HttpRoutes[F] =
+    new CardEndpoints[F, Auth](repository, cardService, superHeroeService, auth).endpoints()
 }

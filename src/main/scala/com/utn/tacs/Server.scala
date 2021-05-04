@@ -28,13 +28,9 @@ object Server {
       preClient <- BlazeClientBuilder[F](global).resource
       client = FollowRedirect(3)(preClient)
 
-      cardRepo = CardMemoryRepository()
-      cardValidator = CardValidation(cardRepo)
-      cardService = CardService(cardRepo, cardValidator)
-      superheroService = SuperheroAPIService(client)
-      cardEndpoints = CardEndpoints[F](cardRepo, cardService, superheroService)
-      matchEndpoints = MatchEndpoints[F](MatchService.impl)
 
+
+      matchEndpoints = MatchEndpoints[F](MatchService.impl)
 
       key <- Resource.liftF(HMACSHA256.generateKey[F])
       authRepo = AuthMemoryRepository(key)
@@ -43,6 +39,12 @@ object Server {
       userService = UserService(userRepo, userValidation)
       authenticator = Auth.jwtAuthenticator[F, HMACSHA256](key, authRepo, userRepo)
       routeAuth = SecuredRequestHandler(authenticator)
+
+      cardRepo = CardMemoryRepository()
+      cardValidator = CardValidation(cardRepo)
+      cardService = CardService(cardRepo, cardValidator)
+      superheroService = SuperheroAPIService(client)
+      cardEndpoints = CardEndpoints[F, HMACSHA256](cardRepo, cardService, superheroService, routeAuth)
 
       userEndpoints = UserEndpoints.endpoints[F, BCrypt, HMACSHA256](userService, BCrypt.syncPasswordHasher[F], routeAuth)
 
@@ -56,7 +58,6 @@ object Server {
         maxAge = 1.day.toSeconds,
         allowedOrigins = List("http://localhost:3000").contains(_)
       )
-
 
       superheroEndpoints = SuperheroEndpoints[F](superheroService)
 
