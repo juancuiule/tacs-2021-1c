@@ -25,7 +25,7 @@ class DeckEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
   implicit val addCardDTODecoder: EntityDecoder[F, AddCardDTO] = jsonOf
   implicit val createCardDTODecoder: EntityDecoder[F, CreateDeckDTO] = jsonOf
 
-  private def createDeckEndpoint: AuthEndpoint[F, Auth] = {
+  private val createDeckEndpoint: AuthEndpoint[F, Auth] = {
     case req@POST -> Root asAuthed _ =>
       val r = scala.util.Random
       for {
@@ -36,7 +36,7 @@ class DeckEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
       } yield resp
   }
 
-  private def getDecksEndpoint: AuthEndpoint[F, Auth] = {
+  private val getDecksEndpoint: AuthEndpoint[F, Auth] = {
     case GET -> Root asAuthed _ =>
       for {
         decks <- service.getAll(100, 0)
@@ -44,7 +44,7 @@ class DeckEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
       } yield resp
   }
 
-  private def getDeckByIdEndpoint: AuthEndpoint[F, Auth] = {
+  private val getDeckByIdEndpoint: AuthEndpoint[F, Auth] = {
     case GET -> Root / IntVar(id) asAuthed _ =>
       for {
         deck <- service.get(id).value
@@ -55,7 +55,7 @@ class DeckEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
       } yield resp
   }
 
-  private def addCardToDeckEndpoint: AuthEndpoint[F, Auth] = {
+  private val addCardToDeckEndpoint: AuthEndpoint[F, Auth] = {
     case req@PATCH -> Root / IntVar(id) asAuthed _ =>
       for {
         dto <- req.request.as[AddCardDTO]
@@ -67,7 +67,7 @@ class DeckEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
       } yield resp
   }
 
-  private def deleteDeckEndpoint: AuthEndpoint[F, Auth] = {
+  private val deleteDeckEndpoint: AuthEndpoint[F, Auth] = {
     case DELETE -> Root / IntVar(id) asAuthed _ => {
       for {
         deleted <- repository.delete(id).value
