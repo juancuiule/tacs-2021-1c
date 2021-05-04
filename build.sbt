@@ -3,6 +3,9 @@ val CirceVersion = "0.13.0"
 val MunitVersion = "0.7.20"
 val LogbackVersion = "1.2.3"
 val MunitCatsEffectVersion = "0.13.0"
+val tsecV = "0.2.1"
+val CatsVersion = "2.2.0"
+
 
 lazy val root = (project in file("."))
   .settings(
@@ -10,6 +13,9 @@ lazy val root = (project in file("."))
     name := "tacs-1c-2021",
     version := "0.0.1-SNAPSHOT",
     scalaVersion := "2.13.4",
+    libraryDependencies ++= Seq(
+      "org.typelevel" %% "cats-core" % CatsVersion
+    ),
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-blaze-server",
       "org.http4s" %% "http4s-blaze-client",
@@ -24,7 +30,21 @@ lazy val root = (project in file("."))
       "ch.qos.logback" % "logback-classic" % LogbackVersion,
       "org.scalameta" %% "svm-subs" % "20.2.0"
     ),
-    addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.10.3"),
+    libraryDependencies ++= Seq(
+      "io.github.jmcardon" %% "tsec-common",
+      "io.github.jmcardon" %% "tsec-password",
+      "io.github.jmcardon" %% "tsec-mac",
+      "io.github.jmcardon" %% "tsec-signatures",
+      "io.github.jmcardon" %% "tsec-jwt-mac",
+      "io.github.jmcardon" %% "tsec-jwt-sig",
+      "io.github.jmcardon" %% "tsec-http4s").map(_ % tsecV),
+    libraryDependencies ++= (scalaBinaryVersion.value match {
+      case "2.10" =>
+        compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full) :: Nil
+      case _ =>
+        Nil
+    }),
+    addCompilerPlugin("org.typelevel" % "kind-projector" % "0.11.3" cross CrossVersion.full),
     addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1"),
     testFrameworks += new TestFramework("munit.Framework")
   )

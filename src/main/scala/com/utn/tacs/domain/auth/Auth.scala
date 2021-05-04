@@ -1,94 +1,57 @@
 package com.utn.tacs.domain.auth
 
-import cats.{Applicative, Monad}
-import cats.data.{EitherT, OptionT}
-import cats.implicits._
+import cats.MonadError
+import cats.effect._
+import com.utn.tacs.domain.user.{Role, User}
+import org.http4s.Response
+import tsec.authentication.{AugmentedJWT, BackingStore, IdentityStore, JWTAuthenticator, SecuredRequest, TSecAuthService}
+import tsec.authorization.BasicRBAC
+import tsec.common.SecureRandomId
+import tsec.jws.mac.JWSMacCV
+import tsec.jwt.algorithms.JWTMacAlgo
+import tsec.mac.jca.MacSigningKey
 
-import scala.collection.concurrent.TrieMap
-import scala.util.Random
-
-final case class User(id: Int, username: String, password: String)
-
-class UserRepository[F[_] : Applicative] {
-  // Mapa Int -> User
-  private val cache = new TrieMap[Int, User]
-
-  def getByUsername(username: String): OptionT[F, User] = {
-    OptionT.fromOption(
-      // dada la lista de users busca uno que tenga ese username
-      cache.toList.find((item) => {
-        val (_, user) = item
-        user.username == username
-      }).map(_._2) // el map (_._2) es un map(tupla => tupla._2) para quedarnos con el user
-    )
-  }
-
-  def create(userDto: Auth.UserDTO): F[User] = {
-    // id random
-    val randomId = Random.nextInt()
-    // arma el nuevo usuario
-    val newUser = User(id = randomId, username = userDto.username, password = userDto.password)
-    // lo guarda
-    cache.put(randomId, newUser)
-    // lo "mete" adentro de la caja F y lo devuelve
-    newUser.pure[F]
-  }
-}
-
-object UserRepository {
-  def apply[F[_] : Applicative]() = new UserRepository[F]()
-}
-
-trait Auth[F[_]] {
-  def login(userDto: Auth.UserDTO): EitherT[F, Auth.LoginError, User]
-
-  def signup(userDto: Auth.UserDTO)(implicit M: Monad[F]): EitherT[F, Auth.SignupError, User]
-
-  def logout(): F[_]
-}
+import scala.concurrent.duration._
 
 object Auth {
-  implicit def apply[F[_]](implicit ev: Auth[F]): Auth[F] = ev
+  def jwtAuthenticator[F[_] : Sync, Auth: JWTMacAlgo](
+    key: MacSigningKey[Auth],
+    authRepo: BackingStore[F, SecureRandomId, AugmentedJWT[Auth, Long]],
+    userRepo: IdentityStore[F, Long, User]
+  )(implicit cv: JWSMacCV[F, Auth]): JWTAuthenticator[F, Long, User, Auth] =
+    JWTAuthenticator.backed.inBearerToken(
+      expiryDuration = 1.hour,
+      maxIdle = None,
+      tokenStore = authRepo,
+      identityStore = userRepo,
+      signingKey = key
+    )
 
-  def impl[F[_] : Applicative]: Auth[F] = new Auth[F] {
-    val johnDoe: UserDTO = UserDTO("john_doe", "12345678")
-    val userRepo: UserRepository[F] = UserRepository()
-    userRepo.create(johnDoe)
+  private def _allRoles[F[_], Auth](implicit F: MonadError[F, Throwable]): BasicRBAC[F, Role, User, Auth] =
+    BasicRBAC.all[F, Role, User, Auth]
 
-    def login(userDto: UserDTO): EitherT[F, LoginError, User] = {
-      userRepo
-        .getByUsername(userDto.username) // un option
-        .filter(_.password == userDto.password) // si matchea password (esto es así por ahora nada más)
-        .toRight(LoginError("User not found or password error"))
-      // trata de formar un Right(user) si no puede porque no hay user queda un Left(LoginError(...))
+  def allRoles[F[_], Auth](
+    pf: PartialFunction[SecuredRequest[F, User, AugmentedJWT[Auth, Long]], F[Response[F]]],
+  )(implicit F: MonadError[F, Throwable]): TSecAuthService[User, AugmentedJWT[Auth, Long], F] =
+    TSecAuthService.withAuthorization(_allRoles[F, AugmentedJWT[Auth, Long]])(pf)
 
-      // TODO: deberia devolver un tipo LoginError si falla, capaz guardar una cookie en la sesion para los loggeados
-      // validar con algun repo como en cards o alguna api o un metodo de loggeo
-    }
+  def allRolesHandler[F[_], Auth](
+    pf: PartialFunction[SecuredRequest[F, User, AugmentedJWT[Auth, Long]], F[Response[F]]],
+  )(
+    onNotAuthorized: TSecAuthService[User, AugmentedJWT[Auth, Long], F],
+  )(implicit F: MonadError[F, Throwable]): TSecAuthService[User, AugmentedJWT[Auth, Long], F] =
+    TSecAuthService.withAuthorizationHandler(_allRoles[F, AugmentedJWT[Auth, Long]])(
+      pf,
+      onNotAuthorized.run,
+    )
 
-    def signup(userDto: UserDTO)(implicit M: Monad[F]): EitherT[F, SignupError, User] = for {
-      _ <- userRepo
-        .getByUsername(userDto.username)
-        .map(_ => SignupError("Username already exists"))
-        .toLeft(())
-      saved <- EitherT.liftF(userRepo.create(userDto))
-    } yield saved
+  private def _adminOnly[F[_], Auth](implicit
+    F: MonadError[F, Throwable],
+  ): BasicRBAC[F, Role, User, Auth] =
+    BasicRBAC[F, Role, User, Auth](Role.Admin)
 
-    // Esto es lo mismo que lo que está arriba para signup
-    // userRepo.getByUsername(userDto.username) // devuelve option de user
-    //   .map(_ => SignupError("")) // si es un Some lo transforma en error poque queríamos encontrar un None
-    //   .toLeft(()) // lo pasa a un Either[SignupError(...), User] que en este caso queda como Left(SignupError(...))
-    //   .flatMap(_ =>
-    //     EitherT.liftF(userRepo.create(userDto)) // crea el usar y lo envuelve en un Either
-    //   )
-
-    def logout(): F[_] = ???
-  }
-
-  case class LoginError(error: String)
-
-  case class SignupError(error: String)
-
-  final case class UserDTO(username: String, password: String)
-
+  def adminOnly[F[_], Auth](
+    pf: PartialFunction[SecuredRequest[F, User, AugmentedJWT[Auth, Long]], F[Response[F]]],
+  )(implicit F: MonadError[F, Throwable]): TSecAuthService[User, AugmentedJWT[Auth, Long], F] =
+    TSecAuthService.withAuthorization(_adminOnly[F, AugmentedJWT[Auth, Long]])(pf)
 }
