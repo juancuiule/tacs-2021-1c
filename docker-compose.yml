@@ -1,9 +1,15 @@
-version: '3'
+version: "3.3"
 
 services:
-  tacs-1c-2021:
+  frontend:
+    container_name: tacs-frontend
+    build: ./frontend
+    ports:
+      - 3000:3000
+  backend:
+    container_name: tacs-backend
     build: .
     ports:
-      - "8080:8080"
+      - 8080:8080
     environment:
       SUPERHERO_API_KEY: "${SUPERHERO_API_KEY}"

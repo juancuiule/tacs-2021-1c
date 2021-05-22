@@ -6,9 +6,6 @@ import TableCell from "@material-ui/core/TableCell";
 import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
 import Typography from "@material-ui/core/Typography";
-import CssBaseline from "@material-ui/core/CssBaseline";
-import Container from "@material-ui/core/Container";
-import Navbar from "../../src/components/navbar/Navbar";
 import { Edit, Delete } from "@material-ui/icons";
 
 import Link from "../../src/Link";
