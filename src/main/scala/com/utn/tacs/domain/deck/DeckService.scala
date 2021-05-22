@@ -25,6 +25,13 @@ class DeckService[F[+_] : Applicative](repository: DeckRepository[F]) {
     } yield result
   }
 
+  def removeCard(id: Int, cardId: Int)(implicit m: Monad[F]): OptionT[F, Deck] = {
+    for {
+      deck <- repository.get(id)
+      updatedDeck = deck.copy(cards = deck.cards.filter(_ != cardId))
+      result <- repository.update(updatedDeck)
+    } yield result
+  }
 
 }
 

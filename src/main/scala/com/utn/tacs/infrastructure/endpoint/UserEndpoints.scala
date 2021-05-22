@@ -5,6 +5,7 @@ import cats.effect.Sync
 import cats.syntax.all._
 import com.utn.tacs.domain.auth.{LoginRequest, SignupRequest}
 import com.utn.tacs.domain.user.{User, UserAlreadyExistsError, UserAuthenticationFailedError, UserService}
+import io.circe.Json
 import io.circe.generic.auto._
 import io.circe.syntax._
 import org.http4s.circe._
@@ -48,7 +49,10 @@ class UserEndpoints[F[_] : Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
           Ok(LoginResponseDTO(user.userName, user.id.get, token.jwt.toEncodedString).asJson).map(auth.embed(_, token))
         }
         case Left(UserAuthenticationFailedError(name)) =>
-          BadRequest(s"Authentication failed for user $name")
+          BadRequest(Json.obj(
+            ("error", Json.fromString(s"Authentication failed for user $name"))
+          ))
+
       }
     }
 
@@ -83,7 +87,7 @@ class UserEndpoints[F[_] : Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
           }
         }
         case Left(UserAlreadyExistsError(existing)) =>
-          Conflict(s"The user with user name ${existing.userName} already exists")
+          Conflict(Json.obj(("error", Json.fromString(s"The user with user name ${existing.userName} already exists"))))
       }
     }
 

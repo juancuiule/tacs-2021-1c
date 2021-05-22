@@ -67,6 +67,17 @@ class DeckEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
       } yield resp
   }
 
+  private val removeCardFromDeckEndpoint: AuthEndpoint[F, Auth] = {
+    case DELETE -> Root / IntVar(id) / "card" / IntVar(cardId) asAuthed _ =>
+      for {
+        updated <- service.removeCard(id, cardId).value
+        resp <- updated match {
+          case Some(newDeck) => Ok(newDeck.asJson)
+          case None => InternalServerError()
+        }
+      } yield resp
+  }
+
   private val deleteDeckEndpoint: AuthEndpoint[F, Auth] = {
     case DELETE -> Root / IntVar(id) asAuthed _ => {
       for {
@@ -88,6 +99,7 @@ class DeckEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
         createDeckEndpoint
           .orElse(addCardToDeckEndpoint)
           .orElse(deleteDeckEndpoint)
+          .orElse(removeCardFromDeckEndpoint)
 
       Auth.allRolesHandler(allRoles)(Auth.adminOnly(onlyAdmin))
     }

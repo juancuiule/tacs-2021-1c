@@ -1,82 +1,110 @@
-import React, { useEffect, useState } from 'react';
-import { makeStyles } from '@material-ui/core/styles';
-import Table from '@material-ui/core/Table';
-import TableBody from '@material-ui/core/TableBody';
-import TableCell from '@material-ui/core/TableCell';
-import TableHead from '@material-ui/core/TableHead';
-import TableRow from '@material-ui/core/TableRow';
-import Typography from '@material-ui/core/Typography';
-import CssBaseline from '@material-ui/core/CssBaseline';
-import Container from '@material-ui/core/Container';
-import { useRouter } from 'next/router';
-import Navbar from '../../components/navbar/Navbar';
-import Link from '../../src/Link';
-import { Edit, Delete } from '@material-ui/icons';
+import React, { useEffect, useState } from "react";
+import { makeStyles } from "@material-ui/core/styles";
+import Typography from "@material-ui/core/Typography";
+import { useRouter } from "next/router";
+import api from "../../src/utils/api";
+import { Deck, Hero } from "../../types";
+import { useAuth } from "../../src/contexts/AuthContext";
+import { Grid } from "@material-ui/core";
+import HeroCard from "../../src/components/HeroCard";
+import Button from "../../src/components/Button";
 
-const useStyles = makeStyles(theme => ({
-  seeMore: {
-    marginTop: theme.spacing(3),
-  },
-  content: {
-    padding: theme.spacing(8, 0, 6),
-  },
-}));
+const useStyles = makeStyles((theme) => ({}));
 
 export default function Decks() {
   const classes = useStyles();
+
+  const {
+    authState: { auth, accessToken },
+  } = useAuth();
+
   const router = useRouter();
 
   const { id } = router.query;
 
-  const [deck, setDeck] = useState({
-    id,
-    name: '',
-    cards: [],
-  });
+  const [deck, setDeck] = useState<Deck | undefined>();
 
   useEffect(() => {
     const fetchDeck = async () => {
-      const res = await fetch(`${process.env.apiBase}/decks/${id}`);
-      setDeck(await res.json());
+      const res = await api.GET<Deck>(`/decks/${id}`, accessToken);
+      setDeck(res);
     };
 
     fetchDeck();
   }, []);
 
-  return (
+  const [cards, setCards] = useState<Hero[]>([]);
+
+  useEffect(() => {
+    const fetchCards = async () => {
+      const res = await api.GET<{ cards: Hero[] }>("/cards");
+      setCards(res.cards);
+    };
+    fetchCards();
+  }, []);
+
+  const addToDeck = (id: number) => async () => {
+    try {
+      const res = await api.PATCH<{ cardId: number }, Deck>(
+        `/decks/${deck.id}`,
+        accessToken
+      )({
+        cardId: id,
+      });
+      setDeck(res);
+    } catch ({ status, response }) {}
+  };
+
+  const removeFromDeck = (id: number) => async () => {
+    try {
+      const res = await api.DELETE<Deck>(
+        `/decks/${deck.id}/card/${id}`,
+        accessToken
+      );
+      setDeck(res);
+    } catch ({ status, response }) {}
+  };
+
+  return auth && deck ? (
     <>
-      <CssBaseline />
+      <Typography component="h1">
+        Deck {deck.name} ({deck.cards.length} cartas)
+      </Typography>
 
-      <Navbar />
-
-      <Container maxWidth="md" component="main" className={classes.content}>
-        <Typography component="h2" variant="h5" color="primary" gutterBottom>
-          Deck {deck.name}
-        </Typography>
-
-        <Typography component="h3" variant="h6" color="primary" gutterBottom>
-          Cards
-        </Typography>
-
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {deck.cards.map(row => (
-              <TableRow key={row.id}>
-                <TableCell>{row.name}</TableCell>
-                <TableCell align="right">
-                  <Delete />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Container>
+      <Grid
+        container
+        wrap="wrap"
+        justify="space-between"
+        style={{
+          marginTop: "20px",
+        }}
+        spacing={2}
+      >
+        {cards.map((card) => {
+          const isInDeck =
+            deck.cards.find((cardId) => cardId === card.id) !== undefined;
+          return (
+            <Grid item xs={2} sm={4} md={3} key={card.id}>
+              <HeroCard hero={card} />
+              {isInDeck ? (
+                <Button
+                  label={"Eliminar del mazo"}
+                  onClick={removeFromDeck(card.id)}
+                  color="primary"
+                />
+              ) : (
+                <Button
+                  label={"Agregar"}
+                  onClick={addToDeck(card.id)}
+                  color="accent"
+                />
+              )}
+            </Grid>
+          );
+        })}
+      </Grid>
     </>
+  ) : (
+    "No se encontró ese mazo"
   );
 }

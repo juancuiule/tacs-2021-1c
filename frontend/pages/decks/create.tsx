@@ -1,103 +1,117 @@
-import React, { useEffect, useState } from 'react';
-import { makeStyles } from '@material-ui/core/styles';
-import TextField from '@material-ui/core/TextField';
-import Button from '@material-ui/core/Button';
-import Typography from '@material-ui/core/Typography';
-import CssBaseline from '@material-ui/core/CssBaseline';
-import Container from '@material-ui/core/Container';
-import { useRouter } from 'next/router';
-import Navbar from '../../components/navbar/Navbar';
-import Link from '../../src/Link';
-import { Edit, Delete } from '@material-ui/icons';
-import { useSession } from 'next-auth/client';
+import React, { useEffect, useState } from "react";
+import { makeStyles } from "@material-ui/core/styles";
+import Typography from "@material-ui/core/Typography";
+import { useRouter } from "next/router";
 
-const useStyles = makeStyles(theme => ({
-  paper: {
-    marginTop: theme.spacing(8),
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
+import { Formik } from "formik";
+
+import * as Yup from "yup";
+
+import { useAuth } from "../../src/contexts/AuthContext";
+
+import TextField from "../../src/components/TextField";
+import Button from "../../src/components/Button";
+import api from "../../src/utils/api";
+
+const useStyles = makeStyles({
+  loginContainer: {
+    display: "flex",
+    flexDirection: "column",
   },
-  content: {
-    padding: theme.spacing(8, 0, 6),
+  formControl: {
+    width: "100%",
+    margin: "20px 0px",
   },
-  avatar: {
-    margin: theme.spacing(1),
-    backgroundColor: theme.palette.secondary.main,
-  },
-  form: {
-    width: '100%', // Fix IE 11 issue.
-    marginTop: theme.spacing(1),
-  },
-  submit: {
-    margin: theme.spacing(3, 0, 2),
-  },
-}));
+});
+
+const CreateDeckSchema = Yup.object().shape({
+  name: Yup.string().required(),
+});
 
 export default function CreateDeck() {
-  const [session, loading] = useSession();
   const classes = useStyles();
+
+  const {
+    authState: { auth, accessToken },
+  } = useAuth();
+
   const router = useRouter();
 
-  const [name, setName] = useState('');
-
-  const submit = async e => {
-    e.preventDefault();
-
-    console.log(loading, session)
-
-    if (!name.length) return;
-
-    const response = await fetch(`${process.env.apiBase}/decks`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ name }),
-    });
-
-    const newDeck = await response.json();
-
-    router.push('/decks');
-  };
+  useEffect(() => {
+    if (!auth) {
+      router.push("/auth/login");
+    }
+  }, [auth]);
 
   return (
-    <>
-      <CssBaseline />
-
-      <Navbar />
-
-      <Container maxWidth="sm" component="main" className={classes.content}>
-        <CssBaseline />
-        <div className={classes.paper}>
-          <Typography component="h1" variant="h5">
-            New Deck
+    <div>
+      {auth && (
+        <>
+          <Typography
+            variant="h1"
+            style={{
+              width: "100%",
+              textAlign: "left",
+            }}
+          >
+            Create deck
           </Typography>
-          <form className={classes.form} noValidate onSubmit={submit}>
-            <TextField
-              variant="outlined"
-              margin="normal"
-              required
-              fullWidth
-              id="name"
-              label="Name"
-              name="name"
-              autoFocus
-              onChange={e => setName(e.target.value)}
-            />
-
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              color="primary"
-              className={classes.submit}
-            >
-              Create Deck
-            </Button>
-          </form>
-        </div>
-      </Container>
-    </>
+          <Formik
+            initialValues={{
+              name: "",
+            }}
+            onSubmit={async ({ name }) => {
+              try {
+                const res = await api.POST<
+                  { name: string },
+                  { id: number; name: string }
+                >(
+                  "/decks",
+                  accessToken
+                )({
+                  name,
+                });
+                console.log(res);
+                router.push(`/decks/${res.id}`);
+              } catch ({ status, response }) {}
+            }}
+            validationSchema={CreateDeckSchema}
+          >
+            {({
+              values,
+              handleChange,
+              handleBlur,
+              handleSubmit,
+              errors,
+              submitCount,
+              ...rest
+            }) => (
+              <form onSubmit={handleSubmit} className={classes.loginContainer}>
+                <TextField
+                  className={classes.formControl}
+                  value={values.name}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  label={"Deck name"}
+                  type="text"
+                  id="name"
+                  error={errors.name !== undefined && rest.touched.name}
+                  errorMessage={errors.name}
+                  handleError
+                />
+                <Button
+                  style={{
+                    marginTop: "40px",
+                  }}
+                  color="primary"
+                  label={"Crear"}
+                  type="submit"
+                />
+              </form>
+            )}
+          </Formik>
+        </>
+      )}
+    </div>
   );
 }
