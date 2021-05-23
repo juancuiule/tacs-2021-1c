@@ -78,7 +78,7 @@ type SignupData = {
 };
 
 class API {
-  API_URL: string = "http://localhost:8080";
+  API_URL: string = process.env.NEXT_PUBLIC_API_URL;
   GET: <U>(path: string, token?: string) => Promise<U>;
   DELETE: <U>(path: string, token?: string) => Promise<U>;
   POST: <T, U>(

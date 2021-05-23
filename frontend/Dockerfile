@@ -8,6 +8,6 @@ ADD . /usr/src/app
 
 RUN npm install && npm run build
 
-EXPOSE 300
+EXPOSE 3000
 
 CMD npm start
