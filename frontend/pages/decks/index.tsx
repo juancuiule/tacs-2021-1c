@@ -14,6 +14,9 @@ import api from "../../src/utils/api";
 import { Deck } from "../../types";
 import { useAuth } from "../../src/contexts/AuthContext";
 
+import Header from "../../src/components/Header";
+import { Container } from "@material-ui/core";
+
 const useStyles = makeStyles((theme) => ({
   seeMore: {
     marginTop: theme.spacing(3),
@@ -47,40 +50,40 @@ export default function Decks() {
   return (
     auth && (
       <>
-        <Typography component="h1">Decks</Typography>
+        <Header title="Mazos" />
+        <Container maxWidth="md" style={{ marginTop: "20px" }}>
+          <LinkButton
+            href="/decks/create"
+            color="primary"
+            variant="contained"
+            className={classes.button}
+          >
+            New Deck
+          </LinkButton>
 
-        <LinkButton
-          href="/decks/create"
-          color="primary"
-          variant="contained"
-          className={classes.button}
-        >
-          New Deck
-        </LinkButton>
-
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Cartas</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {decks.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell>{row.name}</TableCell>
-                <TableCell>{row.cards.length}</TableCell>
-                <TableCell align="right">
-                  <Link href={`/decks/${row.id}`}>
-                    <Edit />
-                  </Link>
-                  {/* <Delete /> */}
-                </TableCell>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Name</TableCell>
+                <TableCell>Cartas</TableCell>
+                <TableCell align="right">Actions</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {decks.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell>{row.name}</TableCell>
+                  <TableCell>{row.cards.length}</TableCell>
+                  <TableCell align="right">
+                    <Link href={`/decks/${row.id}`}>
+                      <Edit />
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Container>
       </>
     )
   );

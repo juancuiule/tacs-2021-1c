@@ -1,21 +1,26 @@
-import React, { useEffect, useState } from "react";
+import {
+  Container,
+  IconButton,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+} from "@material-ui/core";
 import { makeStyles } from "@material-ui/core/styles";
-import Typography from "@material-ui/core/Typography";
-import { useRouter } from "next/router";
-
+import { AddCircle, Delete as DeleteIcon } from "@material-ui/icons";
 import { Formik } from "formik";
-
+import { useRouter } from "next/router";
+import React, { useEffect, useState } from "react";
 import * as Yup from "yup";
-
-import { useAuth } from "../../src/contexts/AuthContext";
-
-import TextField from "../../src/components/TextField";
 import Button from "../../src/components/Button";
+import Header from "../../src/components/Header";
+import TextField from "../../src/components/TextField";
+import { useAuth } from "../../src/contexts/AuthContext";
 import api from "../../src/utils/api";
-
 import { Hero } from "../../types/index";
-import { Grid } from "@material-ui/core";
-import HeroCard from "../../src/components/HeroCard";
 
 const AddCardSchema = Yup.object().shape({
   name: Yup.string().required(),
@@ -35,16 +40,16 @@ const useStyles = makeStyles({
 const AddCard = () => {
   const classes = useStyles();
   const {
-    authState: { auth, accessToken },
+    authState: { auth, fetched, accessToken },
   } = useAuth();
 
   const router = useRouter();
 
   useEffect(() => {
-    if (!auth) {
+    if (!auth && fetched) {
       router.push("/auth/login");
     }
-  }, [auth]);
+  }, [auth, fetched]);
 
   const [heros, setHeros] = useState<Hero[]>([]);
 
@@ -62,19 +67,22 @@ const AddCard = () => {
     } catch ({ status, response }) {}
   };
 
+  useEffect(() => {
+    const fetchCards = async () => {
+      const res = await api.GET<{ cards: Hero[] }>("/cards");
+      setAdded((prev) => [...prev, ...res.cards.map((_) => _.id)]);
+    };
+    fetchCards();
+  }, []);
+
   return (
-    <div>
-      {auth && (
-        <>
-          <Typography
-            variant="h1"
-            style={{
-              width: "100%",
-              textAlign: "left",
-            }}
-          >
-            Agregar cartas
-          </Typography>
+    auth && (
+      <>
+        <Header title="Agregar cartas" />
+        <Container
+          maxWidth="md"
+          style={{ marginTop: "20px", marginBottom: "20px" }}
+        >
           <Formik
             initialValues={{
               name: "",
@@ -113,44 +121,86 @@ const AddCard = () => {
                 />
                 <Button
                   style={{
-                    marginTop: "40px",
+                    marginTop: "20px",
                   }}
                   color="primary"
-                  label={"Crear"}
+                  label={"Search"}
                   type="submit"
                 />
               </form>
             )}
           </Formik>
-          <Grid
-            container
-            wrap="wrap"
-            justify="space-between"
-            style={{
-              marginTop: "20px",
-            }}
-            spacing={2}
-          >
-            {heros.map((hero) => {
-              return (
-                <Grid item xs={2} sm={4} md={3} key={hero.id}>
-                  <HeroCard hero={hero} />
-                  {added.includes(hero.id) ? (
-                    "Agregada"
-                  ) : (
-                    <Button
-                      label="Buscar"
-                      onClick={addCard(hero.id)}
-                      color="accent"
-                    />
-                  )}
-                </Grid>
-              );
-            })}
-          </Grid>
-        </>
-      )}
-    </div>
+          {heros.length !== 0 && (
+            <TableContainer
+              component={Paper}
+              style={{ marginTop: "20px", marginBottom: "20px" }}
+            >
+              <Table aria-label="simple table">
+                <TableHead>
+                  <TableRow>
+                    <TableCell></TableCell>
+                    <TableCell>Nombre</TableCell>
+                    <TableCell align="right">Altura</TableCell>
+                    <TableCell align="right">Peso</TableCell>
+                    <TableCell align="right">Inteligencia</TableCell>
+                    <TableCell align="right">Velocidad</TableCell>
+                    <TableCell align="right">Poder</TableCell>
+                    <TableCell align="right">Combate</TableCell>
+                    <TableCell align="right">Fuerza</TableCell>
+                    <TableCell align="right">Agregar</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {heros.map((card) => (
+                    <TableRow key={card.name}>
+                      <TableCell>
+                        <div
+                          style={{
+                            height: "50px",
+                            width: "50px",
+                            backgroundImage: `url(${card.image})`,
+                            backgroundSize: "cover",
+                            backgroundRepeat: "no-repeat",
+                            backgroundPosition: "center",
+                          }}
+                        ></div>
+                      </TableCell>
+                      <TableCell component="th" scope="row">
+                        {card.name}
+                      </TableCell>
+                      <TableCell align="right">
+                        {card.stats.height} cm
+                      </TableCell>
+                      <TableCell align="right">
+                        {card.stats.weight} kg
+                      </TableCell>
+                      <TableCell align="right">
+                        {card.stats.intelligence}
+                      </TableCell>
+                      <TableCell align="right">{card.stats.speed}</TableCell>
+                      <TableCell align="right">{card.stats.power}</TableCell>
+                      <TableCell align="right">{card.stats.combat}</TableCell>
+                      <TableCell align="right">{card.stats.strength}</TableCell>
+                      <TableCell align="center">
+                        {added.includes(card.id) ? (
+                          <IconButton disabled>
+                            <DeleteIcon />
+                          </IconButton>
+                        ) : (
+                          <IconButton onClick={addCard(card.id)}>
+                            <AddCircle />
+                          </IconButton>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Container>
+      </>
+    )
   );
 };
 

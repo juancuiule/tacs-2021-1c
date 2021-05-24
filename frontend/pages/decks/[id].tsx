@@ -1,19 +1,14 @@
-import React, { useEffect, useState } from "react";
-import { makeStyles } from "@material-ui/core/styles";
-import Typography from "@material-ui/core/Typography";
+import { Container, Grid } from "@material-ui/core";
 import { useRouter } from "next/router";
+import React, { useEffect, useState } from "react";
+import Button from "../../src/components/Button";
+import Header from "../../src/components/Header";
+import HeroCard from "../../src/components/HeroCard";
+import { useAuth } from "../../src/contexts/AuthContext";
 import api from "../../src/utils/api";
 import { Deck, Hero } from "../../types";
-import { useAuth } from "../../src/contexts/AuthContext";
-import { Grid } from "@material-ui/core";
-import HeroCard from "../../src/components/HeroCard";
-import Button from "../../src/components/Button";
-
-const useStyles = makeStyles((theme) => ({}));
 
 export default function Decks() {
-  const classes = useStyles();
-
   const {
     authState: { auth, accessToken },
   } = useAuth();
@@ -67,42 +62,41 @@ export default function Decks() {
 
   return auth && deck ? (
     <>
-      <Typography component="h1">
-        Deck {deck.name} ({deck.cards.length} cartas)
-      </Typography>
-
-      <Grid
-        container
-        wrap="wrap"
-        justify="space-between"
-        style={{
-          marginTop: "20px",
-        }}
-        spacing={2}
-      >
-        {cards.map((card) => {
-          const isInDeck =
-            deck.cards.find((cardId) => cardId === card.id) !== undefined;
-          return (
-            <Grid item xs={2} sm={4} md={3} key={card.id}>
-              <HeroCard hero={card} />
-              {isInDeck ? (
-                <Button
-                  label={"Eliminar del mazo"}
-                  onClick={removeFromDeck(card.id)}
-                  color="primary"
-                />
-              ) : (
-                <Button
-                  label={"Agregar"}
-                  onClick={addToDeck(card.id)}
-                  color="accent"
-                />
-              )}
-            </Grid>
-          );
-        })}
-      </Grid>
+      <Header title={deck.name} />
+      <Container maxWidth="md" style={{ marginTop: "20px" }}>
+        <Grid
+          container
+          wrap="wrap"
+          justify="space-between"
+          style={{
+            marginTop: "20px",
+          }}
+          spacing={2}
+        >
+          {cards.map((card) => {
+            const isInDeck =
+              deck.cards.find((cardId) => cardId === card.id) !== undefined;
+            return (
+              <Grid item xs={2} sm={4} md={3} key={card.id}>
+                <HeroCard hero={card} />
+                {isInDeck ? (
+                  <Button
+                    label={"Eliminar del mazo"}
+                    onClick={removeFromDeck(card.id)}
+                    color="primary"
+                  />
+                ) : (
+                  <Button
+                    label={"Agregar"}
+                    onClick={addToDeck(card.id)}
+                    color="accent"
+                  />
+                )}
+              </Grid>
+            );
+          })}
+        </Grid>
+      </Container>
     </>
   ) : (
     "No se encontró ese mazo"

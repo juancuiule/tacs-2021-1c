@@ -1,19 +1,16 @@
-import * as React from "react";
-
-import { makeStyles, Typography, Container } from "@material-ui/core";
-
+import { Container, makeStyles, Typography } from "@material-ui/core";
 import { Formik } from "formik";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import * as React from "react";
 import * as Yup from "yup";
+import Button from "../../src/components/Button";
+import ErrorMessage from "../../src/components/ErrorMessage";
+import TextField from "../../src/components/TextField";
 import { useAuth } from "../../src/contexts/AuthContext";
 
-import TextField from "../../src/components/TextField";
-import Button from "../../src/components/Button";
-import { useRouter } from "next/router";
-import ErrorMessage from "../../src/components/ErrorMessage";
-import Link from "next/link";
-
 const useStyles = makeStyles({
-  loginContainer: {
+  signupContainer: {
     display: "flex",
     flexDirection: "column",
   },
@@ -23,16 +20,16 @@ const useStyles = makeStyles({
   },
 });
 
-const LoginSchema = Yup.object().shape({
+const SignupSchema = Yup.object().shape({
   userName: Yup.string().required(),
   password: Yup.string().required(),
 });
 
-const Login = () => {
+const Signup = () => {
   const classes = useStyles();
 
   const {
-    login,
+    signup,
     authState: { auth },
   } = useAuth();
 
@@ -56,7 +53,7 @@ const Login = () => {
             textAlign: "left",
           }}
         >
-          Login
+          Signup
         </Typography>
         <Formik
           initialValues={{
@@ -66,14 +63,14 @@ const Login = () => {
           onSubmit={async ({ userName, password }) => {
             // startLoading();
             try {
-              await login(userName, password);
+              await signup(userName, password, "Admin");
             } catch ({ status, response }) {
               console.log(status, response);
               setError(response.error);
               // stopLoading();
             }
           }}
-          validationSchema={LoginSchema}
+          validationSchema={SignupSchema}
         >
           {({
             values,
@@ -84,7 +81,7 @@ const Login = () => {
             submitCount,
             ...rest
           }) => (
-            <form onSubmit={handleSubmit} className={classes.loginContainer}>
+            <form onSubmit={handleSubmit} className={classes.signupContainer}>
               <TextField
                 className={classes.formControl}
                 value={values.userName}
@@ -115,13 +112,12 @@ const Login = () => {
                 style={{
                   marginTop: "40px",
                 }}
-                id="button-login"
                 color="primary"
-                label={"Login"}
+                label={"Signup"}
                 type="submit"
               />
               <ErrorMessage condition={error !== ""} message={error} />
-              <Link href="/auth/signup">or signup</Link>
+              <Link href="/auth/login">or login</Link>
             </form>
           )}
         </Formik>
@@ -130,4 +126,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Signup;

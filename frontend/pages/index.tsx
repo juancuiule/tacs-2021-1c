@@ -1,15 +1,33 @@
-import { makeStyles } from "@material-ui/core/styles";
-import { useAuth } from "../src/contexts/AuthContext";
-import { useEffect } from "react";
+import { Container, Grid } from "@material-ui/core";
 import { useRouter } from "next/router";
-import Link from "next/link";
+import { useEffect } from "react";
+import Header from "../src/components/Header";
+import OutlinedCard from "../src/components/OutlinedCard";
+import { useAuth } from "../src/contexts/AuthContext";
 
-const useStyles = makeStyles((theme) => ({}));
+const CARDS = [
+  {
+    title: "Cartas",
+    description: "Administrar las cartas en el sistema",
+
+    route: "/cards",
+  },
+  {
+    title: "Mazos",
+    description: "Crear o modificar mazos de cartas",
+
+    route: "/decks",
+  },
+  // { title: "Estadísticas", description: "...", route: "" },
+  // { title: "Scoreboard", description: "...", route: "" },
+  // { title: "Usuarios", description: "...", route: "" },
+];
 
 export default function Home() {
   const {
-    authState: { auth, userName },
+    authState: { auth, accessToken },
   } = useAuth();
+
   const router = useRouter();
 
   useEffect(() => {
@@ -19,14 +37,26 @@ export default function Home() {
   }, [auth]);
 
   return (
-    <div>
-      {auth && (
-        <>
-          Hola {userName} <br />
-          <Link href="/decks/create">Crear mazo</Link> <br />
-          <Link href="/cards/add">Agregar cartas</Link>
-        </>
-      )}
-    </div>
+    auth && (
+      <>
+        <Header title="Super Amigos" />
+        <Container maxWidth={"md"} style={{ marginTop: "20px" }}>
+          <Grid container justify="flex-start" spacing={2} wrap="wrap">
+            {CARDS.map((card) => (
+              <Grid item xs={6} sm={4} md={3} key={card.title}>
+                <OutlinedCard
+                  title={card.title}
+                  description={card.description}
+                  actionText={"Ir"}
+                  onClick={() => {
+                    router.push(card.route);
+                  }}
+                />
+              </Grid>
+            ))}
+          </Grid>
+        </Container>
+      </>
+    )
   );
 }

@@ -25,18 +25,21 @@ function HeroCard({ hero }: { hero: Hero }) {
 
   return (
     <div key={hero.id} className={classes.cardContainer}>
-      <div className={classes.cardImage}>
-        <img width="100%" alt={hero.name} src={hero.image} />
-      </div>
+      <div
+        style={{
+          backgroundImage: `url(${hero.image})`,
+          width: "100%",
+          height: "300px",
+          backgroundSize: "cover",
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: 'center'
+        }}
+      ></div>
       <h2 className={classes.cardName}>{hero.name}</h2>
       {hero.biography ? (
         <>
-          {hero.biography.fullName !== "" && (
-            <>
-              <span>{hero.biography.fullName}</span>
-              <br />
-            </>
-          )}
+          <span>{hero.biography.fullName || ''}</span>
+          <br />
           <span style={{ color: "rgb(150, 150, 150)" }}>
             {hero.biography.publisher}
           </span>
@@ -44,7 +47,8 @@ function HeroCard({ hero }: { hero: Hero }) {
       ) : null}
       <ul
         style={{
-          paddingLeft: "20px",
+          paddingLeft: "0px",
+          listStyle: 'none',
         }}
       >
         {Object.entries(hero.stats).map(([powerstat, value]) => {

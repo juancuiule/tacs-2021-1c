@@ -71,7 +71,6 @@ export default function CreateDeck() {
                 )({
                   name,
                 });
-                console.log(res);
                 router.push(`/decks/${res.id}`);
               } catch ({ status, response }) {}
             }}
@@ -104,7 +103,7 @@ export default function CreateDeck() {
                     marginTop: "40px",
                   }}
                   color="primary"
-                  label={"Crear"}
+                  label={"Create"}
                   type="submit"
                 />
               </form>

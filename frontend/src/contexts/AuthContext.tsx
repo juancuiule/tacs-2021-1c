@@ -1,4 +1,4 @@
-import React, { ReactChild, useContext } from "react";
+import React, { ReactChild, useContext, useEffect } from "react";
 import api from "../utils/api";
 
 export type AuthContextData = {
@@ -37,6 +37,8 @@ function reducer(
 ): AuthContextData {
   switch (action.type) {
     case "LOGIN": {
+      localStorage.setItem("accessToken", action.accessToken);
+      localStorage.setItem("userName", action.userName);
       return {
         ...state,
         auth: true,
@@ -50,9 +52,6 @@ function reducer(
         ...state,
         fetched: true,
       };
-    }
-    case "LOGOUT": {
-      return { ...state, auth: false, accessToken: undefined };
     }
   }
 }
@@ -73,8 +72,20 @@ export function AuthContextProvider(props: { children: ReactChild }) {
 }
 
 export function useAuth() {
-  React.useEffect(() => {
-    api.configure("http://localhost:8080");
+  const { authState, dispatch } = useContext(AuthContext);
+
+  useEffect(() => {
+    const localStorageAccessToken = localStorage.getItem("accessToken");
+    const localStorageUserName = localStorage.getItem("userName");
+    if (localStorageAccessToken !== null && localStorageUserName !== null) {
+      dispatch({
+        type: "LOGIN",
+        accessToken: localStorageAccessToken,
+        userName: localStorageUserName,
+      });
+    } else {
+      dispatch({ type: "FETCHED" });
+    }
   }, []);
 
   const login = async (userName: string, password: string) => {
@@ -112,8 +123,6 @@ export function useAuth() {
       type: "LOGOUT",
     });
   };
-
-  const { authState, dispatch } = useContext(AuthContext);
 
   return { authState, login, signup, logout };
 }
