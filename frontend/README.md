@@ -1,30 +1,40 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/zeit/next.js/tree/canary/packages/create-next-app).
+# frontend
 
-## Getting Started
+# Drawer
 
-First, run the development server:
+Existe un drawer a la izquierda que permite acceder a algunas opciones del sistema
 
-```bash
-npm run dev
-# or
-yarn dev
-```
+![Drawer](docs/dashboard.png)
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+# Login y Signup
 
-You can start editing the page by modifying `pages/index.js`. The page auto-updates as you edit the file.
+Se puede hacer login y registrarse en las siguientes rutas
 
-## Learn More
+`/auth/login`
 
-To learn more about Next.js, take a look at the following resources:
+![Login](docs/login.png)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+`/auth/signup` (solo para admin por ahora)
 
-You can check out [the Next.js GitHub repository](https://github.com/zeit/next.js/) - your feedback and contributions are welcome!
+![Signup](docs/signup.png)
 
-## Deploy on ZEIT Now
+# Cartas
 
-The easiest way to deploy your Next.js app is to use the [ZEIT Now Platform](https://zeit.co/import?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Se pueden ver todas las cartas en el sistema (sin necesidad de estar logueado) en `/cards`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+![Cards](docs/cards.png)
+
+Se pueden agregar cartas (siendo admin logueado) en `/cards/add`
+
+![Agregar cartas](docs/add_cards.png)
+
+
+# Mazos
+
+Se pueden ver todos los mazos en el sistema (sin necesidad de estar logueado) en `/decks` (al hacer click en editar se pueden agregar cartas a un mazo)
+
+![Decks](docs/decks.png)
+
+Se pueden crear mazos (siendo admin logueado) en `/decks/create`
+
+![Crear mazo](docs/create_deck.png)

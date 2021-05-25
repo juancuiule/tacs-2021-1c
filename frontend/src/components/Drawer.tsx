@@ -183,7 +183,10 @@ export default function PersistentDrawerLeft(props) {
             </ListItem>
           ))}
           {auth ? (
-            <ListItem button key={"Logout"} onClick={logout}>
+            <ListItem button key={"Logout"} onClick={() => {
+              logout()
+              router.push('/')
+            }}>
               <ListItemIcon>
                 <ExitToApp />
               </ListItemIcon>
