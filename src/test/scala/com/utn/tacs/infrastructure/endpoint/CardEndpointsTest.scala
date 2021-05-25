@@ -1,95 +1,136 @@
-//package com.utn.tacs
-//package infrastructure.endpoint
-//
-//import cats.effect._
-//import com.utn.tacs.domain.cards.{CardService, CardValidation, SuperheroAPIService}
-//import com.utn.tacs.domain.deck.Deck
-//import com.utn.tacs.infrastructure.repository.memory.{CardMemoryRepository, UserMemoryRepository}
-//import io.circe._
-//import io.circe.generic.semiauto._
-//import org.http4s._
-//import org.http4s.circe._
-//import org.http4s.client.Client
-//import org.http4s.client.blaze.BlazeClientBuilder
-//import org.http4s.client.dsl.Http4sClientDsl
-//import org.http4s.client.middleware.FollowRedirect
-//import org.http4s.dsl._
-//import org.http4s.implicits._
-//import org.http4s.server.Router
-//import org.scalatest.funsuite.AnyFunSuite
-//import org.scalatest.matchers.should.Matchers
-//import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
-//import tsec.mac.jca.HMACSHA256
-//
-//import scala.concurrent.ExecutionContext.global
-//
-//class CardEndpointsTest
-//  extends AnyFunSuite
-//    with Matchers
-//    with ScalaCheckPropertyChecks
-//    with SuperAmigosArbitraries
-//    with Http4sDsl[IO]
-//    with Http4sClientDsl[IO] {
-//
-//  implicit val deckEncoder: Encoder[Deck] = deriveEncoder
-//  implicit val deckEnc: EntityEncoder[IO, Deck] = jsonEncoderOf
-//  implicit val deckDecoder: Decoder[Deck] = deriveDecoder
-//  implicit val deckDec: EntityDecoder[IO, Deck] = jsonOf
-//
-//  def getTestResources(implicit c: ContextShift[IO]): (AuthTest[IO], HttpApp[IO]) = {
-//    val userRepo = UserMemoryRepository[IO]()
-//    val auth = new AuthTest[IO](userRepo)
-//    val cardsRepo = CardMemoryRepository()
-//    val cardsValidation = CardValidation[IO](cardsRepo)
-//    val cardsService = CardService[IO](cardsRepo, cardsValidation)
-//  }
-//
-//  //  test("create and get deck") {
-//  //    val (auth, deckRoutes) = getTestResources()
-//  //
-//  //    forAll { (deck: Deck, user: AdminUser) =>
-//  //      (for {
-//  //        createRq <- POST(deck, uri"/decks")
-//  //        createRqAuth <- auth.embedToken(user.value, createRq)
-//  //        createResp <- deckRoutes.run(createRqAuth)
-//  //        deckResp <- createResp.as[Deck]
-//  //        getDeckRq <- GET(Uri.unsafeFromString(s"/decks/${deckResp.id}"))
-//  //        getDeckRqAuth <- auth.embedToken(user.value, getDeckRq)
-//  //        getDeckResp <- deckRoutes.run(getDeckRqAuth)
-//  //        deckResp2 <- getDeckResp.as[Deck]
-//  //      } yield {
-//  //        deckResp.name shouldBe deck.name
-//  //        getDeckResp.status shouldEqual Ok
-//  //        deckResp2.name shouldBe deck.name
-//  //      }).unsafeRunSync()
-//  //    }
-//  //  }
-//  //
-//  //  test("user roles deleting decks") {
-//  //    val (auth, deckRoutes) = getTestResources()
-//  //
-//  //    forAll { (user: PlayerUser, adminUser: AdminUser, deck: Deck) =>
-//  //      (for {
-//  //        createRq <- POST(deck, uri"/decks")
-//  //        createRqAuth <- auth.embedToken(adminUser.value, createRq)
-//  //        createResp <- deckRoutes.run(createRqAuth)
-//  //        deckResp <- createResp.as[Deck]
-//  //        deleteRq <- DELETE(Uri.unsafeFromString(s"/decks/${deckResp.id}"))
-//  //          .flatMap(auth.embedToken(user.value, _))
-//  //        deleteResp <- deckRoutes.run(deleteRq)
-//  //      } yield deleteResp.status shouldEqual Unauthorized).unsafeRunSync()
-//  //    }
-//  //
-//  //    forAll { (user: AdminUser, deck: Deck) =>
-//  //      (for {
-//  //        createRq <- POST(deck, uri"/decks")
-//  //        createRqAuth <- auth.embedToken(user.value, createRq)
-//  //        createResp <- deckRoutes.run(createRqAuth)
-//  //        deckResp <- createResp.as[Deck]
-//  //        deleteRq <- DELETE(Uri.unsafeFromString(s"/decks/${deckResp.id}"))
-//  //          .flatMap(auth.embedToken(user.value, _))
-//  //        deleteResp <- deckRoutes.run(deleteRq)
-//  //      } yield deleteResp.status shouldEqual Ok).unsafeRunSync()
-//  //    }
-//  //  }
-//}
+package com.utn.tacs
+package infrastructure.endpoint
+
+import cats.data.OptionT
+import cats.effect.{IO, Sync}
+import com.utn.tacs.domain.cards._
+import com.utn.tacs.infrastructure.repository.memory.{CardMemoryRepository, UserMemoryRepository}
+import io.circe.generic.auto._
+import io.circe.generic.semiauto._
+import io.circe.{Decoder, Encoder}
+import org.http4s.circe._
+import org.http4s.client.dsl.Http4sClientDsl
+import org.http4s.dsl.Http4sDsl
+import org.http4s.implicits._
+import org.http4s.server.Router
+import org.http4s.{EntityDecoder, EntityEncoder, _}
+import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.matchers.should.Matchers
+import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
+
+case class MockSuperHeroService[F[+_] : Sync]() extends SHService[F] {
+  override def getById(id: Int): F[Option[Superhero]] = OptionT.fromOption(
+    Some(
+      Superhero(
+        id,
+        "Batman",
+        Powerstats(intelligence = "81", strength = "40", speed = "29", durability = "55", power = "63", combat = "90"),
+        SuperheroBiography("Batman", "DC Comics"),
+        Appearance(("5'10", "178 cm"), ("170 lb", "77 kg")),
+        Image("https://www.superherodb.com/pictures2/portraits/10/100/10441.jpg")
+      )
+    )
+  ).value
+
+  override def searchSuperheroByName(searchName: String): F[Option[List[Superhero]]] = OptionT.fromOption(Some(List[Superhero]())).value
+}
+
+class CardEndpointsTest()
+  extends AnyFunSuite
+    with Matchers
+    with ScalaCheckPropertyChecks
+    with SuperAmigosArbitraries
+    with Http4sDsl[IO]
+    with Http4sClientDsl[IO] {
+
+  def getTestResources(): (AuthTest[IO], HttpApp[IO]) = {
+    val userRepo = UserMemoryRepository[IO]()
+    val auth = new AuthTest[IO](userRepo)
+    val cardRepo = CardMemoryRepository()
+    val cardValidation = CardValidation[IO](cardRepo)
+    val cardService = CardService[IO](cardRepo, cardValidation)
+    val superheroAPIService: SHService[IO] = MockSuperHeroService()
+    val cardEndpoints = CardEndpoints(cardRepo, cardService, superheroAPIService, auth.securedRqHandler)
+    val cardsRoutes = Router(("/cards", cardEndpoints)).orNotFound
+    (auth, cardsRoutes)
+  }
+
+  case class AddCardDTO(id: Int)
+
+  case class GetCardsReponse(cards: List[Card])
+  case class GetPublishersReponse(publishers: List[String])
+
+  implicit val addCardDtoEncoder: Encoder[AddCardDTO] = deriveEncoder
+  implicit val addCardDtoEnc: EntityEncoder[IO, AddCardDTO] = jsonEncoderOf[IO, AddCardDTO]
+  implicit val addCardDtoDecoder: Decoder[AddCardDTO] = deriveDecoder
+  implicit val addCardDtoDec: EntityDecoder[IO, AddCardDTO] = jsonOf
+
+  implicit val cardDecoder: EntityDecoder[IO, Card] = jsonOf[IO, Card]
+  implicit val getCardsDecoder: EntityDecoder[IO, GetCardsReponse] = jsonOf[IO, GetCardsReponse]
+  implicit val getPublisherDecoder: EntityDecoder[IO, GetPublishersReponse] = jsonOf[IO, GetPublishersReponse]
+
+  test("create card") {
+    val (auth, cardRoutes) = getTestResources()
+
+
+    forAll { (user: AdminUser) =>
+      (for {
+        createRq <- POST(AddCardDTO(69), uri"/cards")
+        createRqAuth <- auth.embedToken(user.value, createRq)
+        createResp <- cardRoutes.run(createRqAuth)
+        card <- createResp.as[Card]
+      } yield {
+        createResp.status shouldBe Created
+        card.name shouldBe "Batman"
+      }).unsafeRunSync()
+    }
+  }
+
+  test("create cards and get all") {
+    val (auth, cardRoutes) = getTestResources()
+
+    forAll { (user: AdminUser) =>
+      (for {
+        createRq1 <- POST(AddCardDTO(69), uri"/cards")
+        createRq1Auth <- auth.embedToken(user.value, createRq1)
+
+        createRq2 <- POST(AddCardDTO(70), uri"/cards")
+        createRq2Auth <- auth.embedToken(user.value, createRq2)
+
+        create1Resp <- cardRoutes.run(createRq1Auth)
+        create2Resp <- cardRoutes.run(createRq2Auth)
+
+        getCardsRq <- GET(uri"/cards")
+        getCardsResp <- cardRoutes.run(getCardsRq)
+
+        cardsResponse <- getCardsResp.as[GetCardsReponse]
+      } yield {
+        create1Resp.status shouldBe Created
+        create2Resp.status shouldBe Created
+        getCardsResp.status shouldBe Ok
+        cardsResponse.cards should have size 2
+      }).unsafeRunSync()
+    }
+  }
+
+  test("create card and get publishers") {
+    val (auth, cardRoutes) = getTestResources()
+
+    forAll { (user: AdminUser) =>
+      (for {
+        createRq1 <- POST(AddCardDTO(69), uri"/cards")
+        createRq1Auth <- auth.embedToken(user.value, createRq1)
+        create1Resp <- cardRoutes.run(createRq1Auth)
+
+        getPublishersRq <- GET(uri"/cards/publishers")
+        getCardsResp <- cardRoutes.run(getPublishersRq)
+
+        publishersResp <- getCardsResp.as[GetPublishersReponse]
+      } yield {
+        create1Resp.status shouldBe Created
+        getCardsResp.status shouldBe Ok
+        publishersResp.publishers should contain ("DC Comics")
+      }).unsafeRunSync()
+    }
+  }
+}

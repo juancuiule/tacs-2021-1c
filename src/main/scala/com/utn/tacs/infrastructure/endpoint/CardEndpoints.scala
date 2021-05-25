@@ -19,14 +19,14 @@ import tsec.jwt.algorithms.JWTMacAlgo
 class CardEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
   repository: CardRepository,
   cardService: CardService[F],
-  superHeroeService: SuperheroAPIService[F],
+  superHeroeService: SHService[F],
   auth: SecuredRequestHandler[F, Long, User, AugmentedJWT[Auth, Long]]
 ) extends Http4sDsl[F] {
 
   case class AddCardDTO(id: Int)
+  implicit val addCardDTODecoder: EntityDecoder[F, AddCardDTO] = jsonOf
 
   implicit val cardDecoder: EntityDecoder[F, Card] = jsonOf
-  implicit val addCardDTODecoder: EntityDecoder[F, AddCardDTO] = jsonOf
 
   private val addCardEndpoint: AuthEndpoint[F, Auth] = {
     case req@POST -> Root asAuthed _ =>
@@ -99,7 +99,7 @@ object CardEndpoints {
   def apply[F[+_] : Sync, Auth: JWTMacAlgo](
     repository: CardRepository,
     cardService: CardService[F],
-    superHeroeService: SuperheroAPIService[F],
+    superHeroeService: SHService[F],
     auth: SecuredRequestHandler[F, Long, User, AugmentedJWT[Auth, Long]]
   ): HttpRoutes[F] =
     new CardEndpoints[F, Auth](repository, cardService, superHeroeService, auth).endpoints()

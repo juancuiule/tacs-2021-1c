@@ -24,8 +24,12 @@ final case class SuperheroSearchResponse(results: List[Superhero])
 
 final case class ApiResponseError(response: String, error: String)
 
-class SuperheroAPIService[F[+_] : Sync](C: Client[F]) {
+trait SHService[F[+_]] {
+  def getById(id: Int): F[Option[Superhero]]
+  def searchSuperheroByName(searchName: String): F[Option[List[Superhero]]]
+}
 
+class SuperheroAPIService[F[+_] : Sync](C: Client[F]) extends SHService[F] {
   val baseUri = uri"https://superheroapi.com/"
   val uriWithKey: Uri = baseUri.withPath("api/" + scala.util.Properties.envOrElse("SUPERHERO_API_KEY", "") + "/")
 
