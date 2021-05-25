@@ -1,20 +1,25 @@
-import React, { useEffect, useState } from 'react';
-import { makeStyles } from '@material-ui/core/styles';
-import Table from '@material-ui/core/Table';
-import TableBody from '@material-ui/core/TableBody';
-import TableCell from '@material-ui/core/TableCell';
-import TableHead from '@material-ui/core/TableHead';
-import TableRow from '@material-ui/core/TableRow';
-import Typography from '@material-ui/core/Typography';
-import CssBaseline from '@material-ui/core/CssBaseline';
-import Container from '@material-ui/core/Container';
-import Navbar from '../../components/navbar/Navbar';
-import { Edit, Delete } from '@material-ui/icons';
+import {
+  Container,
+  IconButton,
+  Paper,
+  TableContainer,
+} from "@material-ui/core";
+import { makeStyles } from "@material-ui/core/styles";
+import Table from "@material-ui/core/Table";
+import TableBody from "@material-ui/core/TableBody";
+import TableCell from "@material-ui/core/TableCell";
+import TableHead from "@material-ui/core/TableHead";
+import TableRow from "@material-ui/core/TableRow";
+import { Delete, Edit } from "@material-ui/icons";
+import { useRouter } from "next/router";
+import React, { useEffect, useState } from "react";
+import Header from "../../src/components/Header";
+import LinkButton from "../../src/components/LinkButton";
+import { useAuth } from "../../src/contexts/AuthContext";
+import api from "../../src/utils/api";
+import { Deck } from "../../types";
 
-import Link from '../../src/Link';
-import LinkButton from '../../src/LinkButton';
-
-const useStyles = makeStyles(theme => ({
+const useStyles = makeStyles((theme) => ({
   seeMore: {
     marginTop: theme.spacing(3),
   },
@@ -29,62 +34,81 @@ const useStyles = makeStyles(theme => ({
 export default function Decks() {
   const classes = useStyles();
 
-  const [decks, setDecks] = useState([]);
+  const [decks, setDecks] = useState<Deck[]>([]);
+
+  const {
+    authState: { accessToken, auth, fetched },
+  } = useAuth();
+
+  const router = useRouter();
 
   useEffect(() => {
     const fetchDecks = async () => {
-      const res = await fetch(`${process.env.apiBase}/decks`);
-      const results = await res.json();
-
-      setDecks(results.decks);
+      const res = await api.GET<{ decks: Deck[] }>("/decks");
+      setDecks(res.decks);
     };
 
     fetchDecks();
   }, []);
 
+  const deleteDeck = (deckId) => async () => {
+    await api.DELETE(`/decks/${deckId}`, accessToken);
+    setDecks((prev) => prev.filter((d) => d.id !== deckId));
+  };
+
   return (
     <>
-      <CssBaseline />
+      <Header title="Mazos" subtitle={`${decks.length} mazos`} />
+      <Container maxWidth="md" style={{ marginTop: "20px" }}>
+        {auth && fetched && (
+          <LinkButton
+            href="/decks/create"
+            color="primary"
+            variant="contained"
+            className={classes.button}
+          >
+            New Deck
+          </LinkButton>
+        )}
 
-      <Navbar />
-
-      <Container maxWidth="md" component="main" className={classes.content}>
-        <Typography component="h2" variant="h6" color="primary" gutterBottom>
-          Decks
-        </Typography>
-
-        <LinkButton
-          href="/decks/create"
-          color="primary"
-          variant="contained"
-          className={classes.button}
+        <TableContainer
+          component={Paper}
+          style={{ marginTop: "20px", marginBottom: "20px" }}
         >
-          New Deck
-        </LinkButton>
-
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Cartas</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {decks.map(row => (
-              <TableRow key={row.id}>
-                <TableCell>{row.name}</TableCell>
-                <TableCell>{row.cards.length}</TableCell>
-                <TableCell align="right">
-                  <Link href={`/decks/${row.id}`}>
-                    <Edit />
-                  </Link>
-                  <Delete />
-                </TableCell>
+          <Table aria-label="simple table">
+            <TableHead>
+              <TableRow>
+                <TableCell>Nombre</TableCell>
+                <TableCell align="right">Cartas</TableCell>
+                {auth && fetched && <TableCell>Actions</TableCell>}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {decks.map((deck) => (
+                <TableRow key={deck.name}>
+                  <TableCell component="th" scope="row">
+                    {deck.name}
+                  </TableCell>
+                  <TableCell align="right">{deck.cards.length}</TableCell>
+                  {auth && fetched && (
+                    <TableCell>
+                      <IconButton
+                        onClick={() => {
+                          router.push(`/decks/${deck.id}`);
+                        }}
+                      >
+                        <Edit />
+                      </IconButton>
+                      <IconButton onClick={deleteDeck(deck.id)}>
+                        <Delete />
+                      </IconButton>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </Container>
     </>
   );

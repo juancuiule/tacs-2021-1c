@@ -28,8 +28,6 @@ object Server {
       preClient <- BlazeClientBuilder[F](global).resource
       client = FollowRedirect(3)(preClient)
 
-
-
       matchEndpoints = MatchEndpoints[F](MatchService.impl)
 
       key <- Resource.liftF(HMACSHA256.generateKey[F])
@@ -72,7 +70,7 @@ object Server {
       finalHttpApp = Logger.httpApp(logHeaders = true, logBody = false)(httpApp)
 
       exitCode <- BlazeServerBuilder[F](global)
-        .bindHttp(8080, "127.0.0.1")
+        .bindHttp(8080, "0.0.0.0")
         .withHttpApp(finalHttpApp)
         .resource
     } yield exitCode

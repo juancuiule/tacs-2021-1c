@@ -5,6 +5,8 @@ val LogbackVersion = "1.2.3"
 val MunitCatsEffectVersion = "0.13.0"
 val tsecV = "0.2.1"
 val CatsVersion = "2.2.0"
+val ScalaTestVersion = "3.2.9"
+val ScalaTestPlusVersion = "3.2.2.0"
 
 
 lazy val root = (project in file("."))
@@ -29,6 +31,10 @@ lazy val root = (project in file("."))
       "org.typelevel" %% "munit-cats-effect-2" % MunitCatsEffectVersion % Test,
       "ch.qos.logback" % "logback-classic" % LogbackVersion,
       "org.scalameta" %% "svm-subs" % "20.2.0"
+    ),
+    libraryDependencies ++= Seq(
+      "org.scalatest" %% "scalatest" % ScalaTestVersion % Test,
+      "org.scalatestplus" %% "scalacheck-1-14" % ScalaTestPlusVersion % Test,
     ),
     libraryDependencies ++= Seq(
       "io.github.jmcardon" %% "tsec-common",

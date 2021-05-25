@@ -1,4 +1,4 @@
-import { Container, makeStyles, Button, Typography } from "@material-ui/core";
+import { Button, Container, makeStyles, Typography } from "@material-ui/core";
 import { Formik } from "formik";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -9,7 +9,7 @@ import TextField from "../../src/components/TextField";
 import { useAuth } from "../../src/contexts/AuthContext";
 
 const useStyles = makeStyles({
-  signupContainer: {
+  loginContainer: {
     display: "flex",
     flexDirection: "column",
   },
@@ -19,16 +19,16 @@ const useStyles = makeStyles({
   },
 });
 
-const SignupSchema = Yup.object().shape({
+const LoginSchema = Yup.object().shape({
   userName: Yup.string().required(),
   password: Yup.string().required(),
 });
 
-const Signup = () => {
+const Login = () => {
   const classes = useStyles();
 
   const {
-    signup,
+    login,
     authState: { auth },
   } = useAuth();
 
@@ -52,7 +52,7 @@ const Signup = () => {
             textAlign: "left",
           }}
         >
-          Signup
+          Login
         </Typography>
         <Formik
           initialValues={{
@@ -62,14 +62,14 @@ const Signup = () => {
           onSubmit={async ({ userName, password }) => {
             // startLoading();
             try {
-              await signup(userName, password, "Admin");
+              await login(userName, password);
             } catch ({ status, response }) {
               console.log(status, response);
               setError(response.error);
               // stopLoading();
             }
           }}
-          validationSchema={SignupSchema}
+          validationSchema={LoginSchema}
         >
           {({
             values,
@@ -80,7 +80,7 @@ const Signup = () => {
             submitCount,
             ...rest
           }) => (
-            <form onSubmit={handleSubmit} className={classes.signupContainer}>
+            <form onSubmit={handleSubmit} className={classes.loginContainer}>
               <TextField
                 className={classes.formControl}
                 value={values.userName}
@@ -111,14 +111,15 @@ const Signup = () => {
                 style={{
                   marginTop: "20px",
                 }}
+                id="button-login"
                 variant="contained"
                 color="primary"
                 type="submit"
               >
-                Signup
+                Login
               </Button>
               <ErrorMessage condition={error !== ""} message={error} />
-              <Link href="/auth/login">or login</Link>
+              <Link href="/auth/signup">or signup</Link>
             </form>
           )}
         </Formik>
@@ -127,4 +128,4 @@ const Signup = () => {
   );
 };
 
-export default Signup;
+export default Login;

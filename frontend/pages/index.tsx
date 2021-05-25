@@ -1,70 +1,62 @@
-import CssBaseline from '@material-ui/core/CssBaseline';
-import Grid from '@material-ui/core/Grid';
-import Typography from '@material-ui/core/Typography';
-import { makeStyles } from '@material-ui/core/styles';
-import Container from '@material-ui/core/Container';
-import Navbar from '../components/navbar/Navbar';
+import { Container, Grid } from "@material-ui/core";
+import { useRouter } from "next/router";
+import { useEffect } from "react";
+import Header from "../src/components/Header";
+import OutlinedCard from "../src/components/OutlinedCard";
+import { useAuth } from "../src/contexts/AuthContext";
 
-const useStyles = makeStyles(theme => ({
-  '@global': {
-    ul: {
-      margin: 0,
-      padding: 0,
-      listStyle: 'none',
-    },
-  },
-  appBar: {
-    borderBottom: `1px solid ${theme.palette.divider}`,
-  },
-  toolbar: {
-    flexWrap: 'wrap',
-  },
-  toolbarTitle: {
-    flexGrow: 1,
-  },
-  link: {
-    margin: theme.spacing(1, 1.5),
-  },
-  heroContent: {
-    padding: theme.spacing(8, 0, 6),
-  },
-}));
+const CARDS = [
+  {
+    title: "Cartas",
+    description: "Administrar las cartas en el sistema",
 
-export default function Pricing() {
-  const classes = useStyles();
+    route: "/cards",
+  },
+  {
+    title: "Mazos",
+    description: "Crear o modificar mazos de cartas",
+
+    route: "/decks",
+  },
+  // { title: "Estadísticas", description: "...", route: "" },
+  // { title: "Scoreboard", description: "...", route: "" },
+  // { title: "Usuarios", description: "...", route: "" },
+];
+
+export default function Home() {
+  const {
+    authState: { auth, accessToken },
+  } = useAuth();
+
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!auth) {
+      router.push("/auth/login");
+    }
+  }, [auth]);
 
   return (
-    <>
-      <CssBaseline />
-
-      <Navbar />
-
-      <Container maxWidth="sm" component="main" className={classes.heroContent}>
-        <Typography
-          component="h1"
-          variant="h2"
-          align="center"
-          color="textPrimary"
-          gutterBottom
-        >
-          Pricing
-        </Typography>
-        <Typography
-          variant="h5"
-          align="center"
-          color="textSecondary"
-          component="p"
-        >
-          Quickly build an effective pricing table for your potential customers
-          with this layout. It&apos;s built with default Material-UI components
-          with little customization.
-        </Typography>
-      </Container>
-
-      <Container maxWidth="md" component="main">
-        <Grid container spacing={5} alignItems="flex-end"></Grid>
-      </Container>
-
-    </>
+    auth && (
+      <>
+        <Header title="Super Amigos" />
+        <Container maxWidth={"md"} style={{ marginTop: "20px" }}>
+          <Grid container justify="flex-start" spacing={2} wrap="wrap">
+            {CARDS.map((card) => (
+              <Grid item xs={6} sm={4} md={3} key={card.title}>
+                <OutlinedCard
+                  title={card.title}
+                  description={card.description}
+                  actionText={"Ir"}
+                  onClick={() => {
+                    router.push(card.route);
+                  }}
+                />
+              </Grid>
+            ))}
+          </Grid>
+        </Container>
+      </>
+    )
   );
 }

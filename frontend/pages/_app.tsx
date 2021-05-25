@@ -1,5 +1,11 @@
-import type { AppProps } from "next/app";
+import { CssBaseline, ThemeProvider, Container } from "@material-ui/core";
+import { AppProps } from "next/app";
 import Head from "next/head";
+import { AuthContextProvider } from "../src/contexts/AuthContext";
+import Drawer from "../src/components/Drawer";
+
+import "./styles.css";
+import theme from "../src/theme";
 
 function MyApp({ Component, pageProps }: AppProps) {
   return (
@@ -8,21 +14,16 @@ function MyApp({ Component, pageProps }: AppProps) {
         <title>Super Amigos</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <Component {...pageProps} />
-      <style jsx global>{`
-        html,
-        body {
-          padding: 0;
-          margin: 0;
-          font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto,
-            Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue,
-            sans-serif;
-        }
-
-        * {
-          box-sizing: border-box;
-        }
-      `}</style>
+      <div className="app">
+        <CssBaseline />
+        <AuthContextProvider>
+          <ThemeProvider theme={theme}>
+            <Drawer>
+              <Component {...pageProps} />
+            </Drawer>
+          </ThemeProvider>
+        </AuthContextProvider>
+      </div>
     </>
   );
 }

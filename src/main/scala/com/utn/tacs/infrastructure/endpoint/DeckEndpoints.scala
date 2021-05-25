@@ -36,8 +36,8 @@ class DeckEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
       } yield resp
   }
 
-  private val getDecksEndpoint: AuthEndpoint[F, Auth] = {
-    case GET -> Root asAuthed _ =>
+  private val getDecksEndpoint: HttpRoutes[F] = HttpRoutes.of[F] {
+    case GET -> Root =>
       for {
         decks <- service.getAll(100, 0)
         resp <- Ok(Json.obj(("decks", decks.asJson)))
@@ -67,6 +67,17 @@ class DeckEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
       } yield resp
   }
 
+  private val removeCardFromDeckEndpoint: AuthEndpoint[F, Auth] = {
+    case DELETE -> Root / IntVar(id) / "card" / IntVar(cardId) asAuthed _ =>
+      for {
+        updated <- service.removeCard(id, cardId).value
+        resp <- updated match {
+          case Some(newDeck) => Ok(newDeck.asJson)
+          case None => InternalServerError()
+        }
+      } yield resp
+  }
+
   private val deleteDeckEndpoint: AuthEndpoint[F, Auth] = {
     case DELETE -> Root / IntVar(id) asAuthed _ => {
       for {
@@ -82,19 +93,16 @@ class DeckEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
   def endpoints(): HttpRoutes[F] = {
     val authEndpoints: AuthService[F, Auth] = {
       val allRoles =
-        getDecksEndpoint
-          .orElse(getDeckByIdEndpoint)
+        getDeckByIdEndpoint
       val onlyAdmin =
         createDeckEndpoint
           .orElse(addCardToDeckEndpoint)
           .orElse(deleteDeckEndpoint)
-
+          .orElse(removeCardFromDeckEndpoint)
       Auth.allRolesHandler(allRoles)(Auth.adminOnly(onlyAdmin))
     }
-    auth.liftService(authEndpoints)
+    getDecksEndpoint <+> auth.liftService(authEndpoints)
   }
-
-
 }
 
 object DeckEndpoints {
