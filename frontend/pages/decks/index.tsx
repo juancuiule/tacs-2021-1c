@@ -1,21 +1,24 @@
-import React, { useEffect, useState } from "react";
+import {
+  Container,
+  IconButton,
+  Paper,
+  TableContainer,
+} from "@material-ui/core";
 import { makeStyles } from "@material-ui/core/styles";
 import Table from "@material-ui/core/Table";
 import TableBody from "@material-ui/core/TableBody";
 import TableCell from "@material-ui/core/TableCell";
 import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
-import Typography from "@material-ui/core/Typography";
-import { Edit, Delete } from "@material-ui/icons";
-
-import Link from "../../src/Link";
-import LinkButton from "../../src/LinkButton";
+import { Delete, Edit } from "@material-ui/icons";
+import React, { useEffect, useState } from "react";
+import Header from "../../src/components/Header";
+import Link from "../../src/components/Link";
+import { useAuth } from "../../src/contexts/AuthContext";
+import LinkButton from "../../src/components/LinkButton";
 import api from "../../src/utils/api";
 import { Deck } from "../../types";
-import { useAuth } from "../../src/contexts/AuthContext";
-
-import Header from "../../src/components/Header";
-import { Container } from "@material-ui/core";
+import { useRouter } from "next/router";
 
 const useStyles = makeStyles((theme) => ({
   seeMore: {
@@ -35,20 +38,27 @@ export default function Decks() {
   const [decks, setDecks] = useState<Deck[]>([]);
 
   const {
-    authState: { accessToken, auth },
+    authState: { accessToken, auth, fetched },
   } = useAuth();
 
-  useEffect(() => {
-    const fetchDecks = async () => {
-      const res = await api.GET<{ decks: Deck[] }>("/decks", accessToken);
-      setDecks(res.decks);
-    };
+  const router = useRouter();
 
-    fetchDecks();
-  }, []);
+  useEffect(() => {
+    if (auth && fetched) {
+      const fetchDecks = async () => {
+        const res = await api.GET<{ decks: Deck[] }>("/decks", accessToken);
+        setDecks(res.decks);
+      };
+
+      fetchDecks();
+    }
+  }, [auth, fetched]);
+
+  // const deleteDeck
 
   return (
-    auth && (
+    auth &&
+    fetched && (
       <>
         <Header title="Mazos" />
         <Container maxWidth="md" style={{ marginTop: "20px" }}>
@@ -61,7 +71,44 @@ export default function Decks() {
             New Deck
           </LinkButton>
 
-          <Table size="small">
+          <TableContainer
+            component={Paper}
+            style={{ marginTop: "20px", marginBottom: "20px" }}
+          >
+            <Table aria-label="simple table">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Nombre</TableCell>
+                  <TableCell align="right">Cartas</TableCell>
+                  <TableCell>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {decks.map((deck) => (
+                  <TableRow key={deck.name}>
+                    <TableCell component="th" scope="row">
+                      {deck.name}
+                    </TableCell>
+                    <TableCell align="right">{deck.cards.length}</TableCell>
+                    <TableCell>
+                      <IconButton
+                        onClick={() => {
+                          router.push(`/decks/${deck.id}`);
+                        }}
+                      >
+                        <Edit />
+                      </IconButton>
+                      <IconButton onClick={() => {}} disabled>
+                        <Delete />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {/* <Table size="small">
             <TableHead>
               <TableRow>
                 <TableCell>Name</TableCell>
@@ -82,7 +129,7 @@ export default function Decks() {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
+          </Table> */}
         </Container>
       </>
     )

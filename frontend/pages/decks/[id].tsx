@@ -20,13 +20,15 @@ export default function Decks() {
   const [deck, setDeck] = useState<Deck | undefined>();
 
   useEffect(() => {
-    const fetchDeck = async () => {
-      const res = await api.GET<Deck>(`/decks/${id}`, accessToken);
-      setDeck(res);
-    };
+    if (id !== undefined) {
+      const fetchDeck = async () => {
+        const res = await api.GET<Deck>(`/decks/${id}`, accessToken);
+        setDeck(res);
+      };
 
-    fetchDeck();
-  }, []);
+      fetchDeck();
+    }
+  }, [id]);
 
   const [cards, setCards] = useState<Hero[]>([]);
 
