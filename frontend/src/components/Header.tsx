@@ -16,11 +16,12 @@ const useStyles = makeStyles({
   },
 });
 
-const Button = (props: { title: string }) => {
+const Button = (props: { title: string, subtitle?: string }) => {
   const classes = useStyles();
   return (
     <header className={classes.header}>
       <Typography variant="h1">{props.title}</Typography>
+      {props.subtitle && <Typography variant="caption">{props.subtitle}</Typography>}
     </header>
   );
 };

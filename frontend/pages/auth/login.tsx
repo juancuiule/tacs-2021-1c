@@ -1,16 +1,12 @@
-import * as React from "react";
-
-import { makeStyles, Typography, Container } from "@material-ui/core";
-
+import { Button, Container, makeStyles, Typography } from "@material-ui/core";
 import { Formik } from "formik";
-import * as Yup from "yup";
-import { useAuth } from "../../src/contexts/AuthContext";
-
-import TextField from "../../src/components/TextField";
-import Button from "../../src/components/Button";
-import { useRouter } from "next/router";
-import ErrorMessage from "../../src/components/ErrorMessage";
 import Link from "next/link";
+import { useRouter } from "next/router";
+import * as React from "react";
+import * as Yup from "yup";
+import ErrorMessage from "../../src/components/ErrorMessage";
+import TextField from "../../src/components/TextField";
+import { useAuth } from "../../src/contexts/AuthContext";
 
 const useStyles = makeStyles({
   loginContainer: {
@@ -113,13 +109,15 @@ const Login = () => {
               />
               <Button
                 style={{
-                  marginTop: "40px",
+                  marginTop: "20px",
                 }}
                 id="button-login"
+                variant="contained"
                 color="primary"
-                label={"Login"}
                 type="submit"
-              />
+              >
+                Login
+              </Button>
               <ErrorMessage condition={error !== ""} message={error} />
               <Link href="/auth/signup">or signup</Link>
             </form>

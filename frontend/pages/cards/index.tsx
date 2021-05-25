@@ -6,13 +6,14 @@ import {
   TableCell,
   TableContainer,
   TableHead,
-  TableRow
+  TableRow,
 } from "@material-ui/core";
 import { makeStyles } from "@material-ui/core/styles";
 import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
 import Header from "../../src/components/Header";
 import LinkButton from "../../src/components/LinkButton";
+import { useAuth } from "../../src/contexts/AuthContext";
 import api from "../../src/utils/api";
 import { Hero } from "../../types/index";
 
@@ -23,9 +24,11 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 const Cards = () => {
-  const router = useRouter();
-
   const [cards, setCards] = useState<Hero[]>([]);
+
+  const {
+    authState: { auth, fetched },
+  } = useAuth();
 
   useEffect(() => {
     const fetchCards = async () => {
@@ -39,19 +42,21 @@ const Cards = () => {
 
   return (
     <>
-      <Header title="Cartas" />
+      <Header title="Cartas" subtitle={`${cards.length} cartas`} />
       <Container
         maxWidth="md"
         style={{ marginTop: "20px", marginBottom: "20px" }}
       >
-        <LinkButton
-          href="/cards/add"
-          color="primary"
-          variant="contained"
-          className={classes.button}
-        >
-          Agregar cartas
-        </LinkButton>
+        {auth && fetched && (
+          <LinkButton
+            href="/cards/add"
+            color="primary"
+            variant="contained"
+            className={classes.button}
+          >
+            Agregar cartas
+          </LinkButton>
+        )}
 
         <TableContainer
           component={Paper}

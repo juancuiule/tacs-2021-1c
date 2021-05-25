@@ -152,7 +152,7 @@ const AddCard = () => {
                 </TableHead>
                 <TableBody>
                   {heros.map((card) => (
-                    <TableRow key={card.name}>
+                    <TableRow key={`${card.id}`}>
                       <TableCell>
                         <div
                           style={{

@@ -1,10 +1,9 @@
-import { Container, makeStyles, Typography } from "@material-ui/core";
+import { Container, makeStyles, Button, Typography } from "@material-ui/core";
 import { Formik } from "formik";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import * as React from "react";
 import * as Yup from "yup";
-import Button from "../../src/components/Button";
 import ErrorMessage from "../../src/components/ErrorMessage";
 import TextField from "../../src/components/TextField";
 import { useAuth } from "../../src/contexts/AuthContext";
@@ -110,12 +109,14 @@ const Signup = () => {
               />
               <Button
                 style={{
-                  marginTop: "40px",
+                  marginTop: "20px",
                 }}
+                variant="contained"
                 color="primary"
-                label={"Signup"}
                 type="submit"
-              />
+              >
+                Signup
+              </Button>
               <ErrorMessage condition={error !== ""} message={error} />
               <Link href="/auth/login">or login</Link>
             </form>

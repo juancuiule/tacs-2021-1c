@@ -28,8 +28,6 @@ object Server {
       preClient <- BlazeClientBuilder[F](global).resource
       client = FollowRedirect(3)(preClient)
 
-
-
       matchEndpoints = MatchEndpoints[F](MatchService.impl)
 
       key <- Resource.liftF(HMACSHA256.generateKey[F])

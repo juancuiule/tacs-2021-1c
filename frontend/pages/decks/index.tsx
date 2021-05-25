@@ -11,14 +11,13 @@ import TableCell from "@material-ui/core/TableCell";
 import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
 import { Delete, Edit } from "@material-ui/icons";
+import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
 import Header from "../../src/components/Header";
-import Link from "../../src/components/Link";
-import { useAuth } from "../../src/contexts/AuthContext";
 import LinkButton from "../../src/components/LinkButton";
+import { useAuth } from "../../src/contexts/AuthContext";
 import api from "../../src/utils/api";
 import { Deck } from "../../types";
-import { useRouter } from "next/router";
 
 const useStyles = makeStyles((theme) => ({
   seeMore: {
@@ -44,24 +43,24 @@ export default function Decks() {
   const router = useRouter();
 
   useEffect(() => {
-    if (auth && fetched) {
-      const fetchDecks = async () => {
-        const res = await api.GET<{ decks: Deck[] }>("/decks", accessToken);
-        setDecks(res.decks);
-      };
+    const fetchDecks = async () => {
+      const res = await api.GET<{ decks: Deck[] }>("/decks");
+      setDecks(res.decks);
+    };
 
-      fetchDecks();
-    }
-  }, [auth, fetched]);
+    fetchDecks();
+  }, []);
 
-  // const deleteDeck
+  const deleteDeck = (deckId) => async () => {
+    await api.DELETE(`/decks/${deckId}`, accessToken);
+    setDecks((prev) => prev.filter((d) => d.id !== deckId));
+  };
 
   return (
-    auth &&
-    fetched && (
-      <>
-        <Header title="Mazos" />
-        <Container maxWidth="md" style={{ marginTop: "20px" }}>
+    <>
+      <Header title="Mazos" subtitle={`${decks.length} mazos`} />
+      <Container maxWidth="md" style={{ marginTop: "20px" }}>
+        {auth && fetched && (
           <LinkButton
             href="/decks/create"
             color="primary"
@@ -70,26 +69,28 @@ export default function Decks() {
           >
             New Deck
           </LinkButton>
+        )}
 
-          <TableContainer
-            component={Paper}
-            style={{ marginTop: "20px", marginBottom: "20px" }}
-          >
-            <Table aria-label="simple table">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Nombre</TableCell>
-                  <TableCell align="right">Cartas</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {decks.map((deck) => (
-                  <TableRow key={deck.name}>
-                    <TableCell component="th" scope="row">
-                      {deck.name}
-                    </TableCell>
-                    <TableCell align="right">{deck.cards.length}</TableCell>
+        <TableContainer
+          component={Paper}
+          style={{ marginTop: "20px", marginBottom: "20px" }}
+        >
+          <Table aria-label="simple table">
+            <TableHead>
+              <TableRow>
+                <TableCell>Nombre</TableCell>
+                <TableCell align="right">Cartas</TableCell>
+                {auth && fetched && <TableCell>Actions</TableCell>}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {decks.map((deck) => (
+                <TableRow key={deck.name}>
+                  <TableCell component="th" scope="row">
+                    {deck.name}
+                  </TableCell>
+                  <TableCell align="right">{deck.cards.length}</TableCell>
+                  {auth && fetched && (
                     <TableCell>
                       <IconButton
                         onClick={() => {
@@ -98,40 +99,17 @@ export default function Decks() {
                       >
                         <Edit />
                       </IconButton>
-                      <IconButton onClick={() => {}} disabled>
+                      <IconButton onClick={deleteDeck(deck.id)}>
                         <Delete />
                       </IconButton>
                     </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-
-          {/* <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Cartas</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {decks.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell>{row.name}</TableCell>
-                  <TableCell>{row.cards.length}</TableCell>
-                  <TableCell align="right">
-                    <Link href={`/decks/${row.id}`}>
-                      <Edit />
-                    </Link>
-                  </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
-          </Table> */}
-        </Container>
-      </>
-    )
+          </Table>
+        </TableContainer>
+      </Container>
+    </>
   );
 }

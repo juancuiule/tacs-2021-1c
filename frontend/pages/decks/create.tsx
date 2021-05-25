@@ -32,16 +32,16 @@ export default function CreateDeck() {
   const classes = useStyles();
 
   const {
-    authState: { auth, accessToken },
+    authState: { auth, fetched, accessToken },
   } = useAuth();
 
   const router = useRouter();
 
   useEffect(() => {
-    if (!auth) {
+    if (!auth && fetched) {
       router.push("/auth/login");
     }
-  }, [auth]);
+  }, [auth, fetched]);
 
   return (
     <div>

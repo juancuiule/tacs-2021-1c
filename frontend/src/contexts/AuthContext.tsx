@@ -53,6 +53,17 @@ function reducer(
         fetched: true,
       };
     }
+    case "LOGOUT": {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("userName");
+      return {
+        ...state,
+        auth: false,
+        accessToken: undefined,
+        userName: undefined,
+        fetched: false,
+      };
+    }
   }
 }
 
