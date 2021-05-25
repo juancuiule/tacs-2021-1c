@@ -1,17 +1,19 @@
 package com.utn.tacs
 package infrastructure.endpoint
 
-import cats.effect._
-import com.utn.tacs.domain.deck.{Deck, DeckService}
-import com.utn.tacs.infrastructure.repository.memory.{DeckMemoryRepository, UserMemoryRepository}
+import cats.effect.IO
+import com.utn.tacs.domain.cards.{Card, CardService, CardValidation, SHService}
+import com.utn.tacs.domain.deck.{AddCardDTO, Deck, DeckService}
+import com.utn.tacs.infrastructure.repository.memory.{CardMemoryRepository, DeckMemoryRepository, UserMemoryRepository}
 import io.circe._
+import io.circe.generic.auto._
 import io.circe.generic.semiauto._
-import org.http4s._
 import org.http4s.circe._
 import org.http4s.client.dsl.Http4sClientDsl
-import org.http4s.dsl._
+import org.http4s.dsl.Http4sDsl
 import org.http4s.implicits._
 import org.http4s.server.Router
+import org.http4s.{EntityDecoder, EntityEncoder, _}
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
@@ -33,13 +35,31 @@ class DeckEndpointsTest
   def getTestResources(): (AuthTest[IO], HttpApp[IO]) = {
     val userRepo = UserMemoryRepository[IO]()
     val auth = new AuthTest[IO](userRepo)
+
+    val cardRepo = CardMemoryRepository()
+    val cardValidation = CardValidation[IO](cardRepo)
+    val cardService = CardService[IO](cardRepo, cardValidation)
+    val superheroAPIService: SHService[IO] = MockSuperHeroService()
+    val cardEndpoints = CardEndpoints(cardRepo, cardService, superheroAPIService, auth.securedRqHandler)
     val deckRepo = DeckMemoryRepository[IO]()
     val deckService = DeckService(deckRepo)
     val deckEndpoint =
       DeckEndpoints[IO, HMACSHA256](deckRepo, deckService, auth.securedRqHandler)
-    val deckRoutes = Router(("/decks", deckEndpoint)).orNotFound
-    (auth, deckRoutes)
+    val routes = Router(("/decks", deckEndpoint), ("/cards", cardEndpoints)).orNotFound
+    (auth, routes)
   }
+
+  implicit val addCardDtoEncoder: Encoder[AddCardFromHeroDTO] = deriveEncoder
+  implicit val addCardDtoEnc: EntityEncoder[IO, AddCardFromHeroDTO] = jsonEncoderOf[IO, AddCardFromHeroDTO]
+  implicit val addCardDtoDecoder: Decoder[AddCardFromHeroDTO] = deriveDecoder
+  implicit val addCardDtoDec: EntityDecoder[IO, AddCardFromHeroDTO] = jsonOf
+
+  implicit val addCardToDeckDtoEncoder: Encoder[AddCardDTO] = deriveEncoder
+  implicit val addCardToDeckDtoEnc: EntityEncoder[IO, AddCardDTO] = jsonEncoderOf[IO, AddCardDTO]
+  implicit val addCardToDeckDtoDecoder: Decoder[AddCardDTO] = deriveDecoder
+  implicit val addCardToDeckDtoDec: EntityDecoder[IO, AddCardDTO] = jsonOf[IO, AddCardDTO]
+
+  implicit val cardDecoder: EntityDecoder[IO, Card] = jsonOf[IO, Card]
 
   test("create and get deck") {
     val (auth, deckRoutes) = getTestResources()
@@ -58,6 +78,30 @@ class DeckEndpointsTest
         deckResp.name shouldBe deck.name
         getDeckResp.status shouldEqual Ok
         deckResp2.name shouldBe deck.name
+      }).unsafeRunSync()
+    }
+  }
+
+  test("create card and add to deck") {
+    val (auth, routes) = getTestResources()
+    forAll { (user: AdminUser, deck: Deck) =>
+      (for {
+        createDeckRq <- POST(deck, uri"/decks")
+        createDeckRqAuth <- auth.embedToken(user.value, createDeckRq)
+        createDeckResp <- routes.run(createDeckRqAuth)
+        deckResp <- createDeckResp.as[Deck]
+
+        createCardRq <- POST(AddCardFromHeroDTO(69), uri"/cards")
+        createCardRqAuth <- auth.embedToken(user.value, createCardRq)
+        createCardResp <- routes.run(createCardRqAuth)
+        card <- createCardResp.as[Card]
+
+        addToDeckRq <- PATCH(AddCardDTO(card.id), Uri.unsafeFromString(s"/decks/${deckResp.id}"))
+        addToDeckRqAuth <- auth.embedToken(user.value, addToDeckRq)
+        addToDeckResp <- routes.run(addToDeckRqAuth)
+        newDeck <- addToDeckResp.as[Deck]
+      } yield {
+        newDeck.cards should have size 1
       }).unsafeRunSync()
     }
   }

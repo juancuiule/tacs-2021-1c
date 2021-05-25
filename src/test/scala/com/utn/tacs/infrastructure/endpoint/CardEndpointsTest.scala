@@ -35,6 +35,8 @@ case class MockSuperHeroService[F[+_] : Sync]() extends SHService[F] {
   override def searchSuperheroByName(searchName: String): F[Option[List[Superhero]]] = OptionT.fromOption(Some(List[Superhero]())).value
 }
 
+case class AddCardFromHeroDTO(id: Int)
+
 class CardEndpointsTest()
   extends AnyFunSuite
     with Matchers
@@ -55,15 +57,13 @@ class CardEndpointsTest()
     (auth, cardsRoutes)
   }
 
-  case class AddCardDTO(id: Int)
-
   case class GetCardsReponse(cards: List[Card])
   case class GetPublishersReponse(publishers: List[String])
 
-  implicit val addCardDtoEncoder: Encoder[AddCardDTO] = deriveEncoder
-  implicit val addCardDtoEnc: EntityEncoder[IO, AddCardDTO] = jsonEncoderOf[IO, AddCardDTO]
-  implicit val addCardDtoDecoder: Decoder[AddCardDTO] = deriveDecoder
-  implicit val addCardDtoDec: EntityDecoder[IO, AddCardDTO] = jsonOf
+  implicit val addCardDtoEncoder: Encoder[AddCardFromHeroDTO] = deriveEncoder
+  implicit val addCardDtoEnc: EntityEncoder[IO, AddCardFromHeroDTO] = jsonEncoderOf[IO, AddCardFromHeroDTO]
+  implicit val addCardDtoDecoder: Decoder[AddCardFromHeroDTO] = deriveDecoder
+  implicit val addCardDtoDec: EntityDecoder[IO, AddCardFromHeroDTO] = jsonOf
 
   implicit val cardDecoder: EntityDecoder[IO, Card] = jsonOf[IO, Card]
   implicit val getCardsDecoder: EntityDecoder[IO, GetCardsReponse] = jsonOf[IO, GetCardsReponse]
@@ -72,10 +72,9 @@ class CardEndpointsTest()
   test("create card") {
     val (auth, cardRoutes) = getTestResources()
 
-
     forAll { (user: AdminUser) =>
       (for {
-        createRq <- POST(AddCardDTO(69), uri"/cards")
+        createRq <- POST(AddCardFromHeroDTO(69), uri"/cards")
         createRqAuth <- auth.embedToken(user.value, createRq)
         createResp <- cardRoutes.run(createRqAuth)
         card <- createResp.as[Card]
@@ -91,10 +90,10 @@ class CardEndpointsTest()
 
     forAll { (user: AdminUser) =>
       (for {
-        createRq1 <- POST(AddCardDTO(69), uri"/cards")
+        createRq1 <- POST(AddCardFromHeroDTO(69), uri"/cards")
         createRq1Auth <- auth.embedToken(user.value, createRq1)
 
-        createRq2 <- POST(AddCardDTO(70), uri"/cards")
+        createRq2 <- POST(AddCardFromHeroDTO(70), uri"/cards")
         createRq2Auth <- auth.embedToken(user.value, createRq2)
 
         create1Resp <- cardRoutes.run(createRq1Auth)
@@ -118,7 +117,7 @@ class CardEndpointsTest()
 
     forAll { (user: AdminUser) =>
       (for {
-        createRq1 <- POST(AddCardDTO(69), uri"/cards")
+        createRq1 <- POST(AddCardFromHeroDTO(69), uri"/cards")
         createRq1Auth <- auth.embedToken(user.value, createRq1)
         create1Resp <- cardRoutes.run(createRq1Auth)
 

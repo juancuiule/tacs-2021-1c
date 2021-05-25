@@ -103,8 +103,6 @@ class DeckEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
     }
     getDecksEndpoint <+> auth.liftService(authEndpoints)
   }
-
-
 }
 
 object DeckEndpoints {
