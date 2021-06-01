@@ -1,8 +1,9 @@
 package com.utn.tacs.infrastructure.endpoint
 
+import cats.data.EitherT
 import cats.effect.Sync
 import cats.syntax.all._
-import com.utn.tacs.domain.`match`.{Match, MatchNotFoundError, MatchService}
+import com.utn.tacs.domain.`match`.{Match, MatchAlreadyExistsError, MatchNotFoundError, MatchService}
 import com.utn.tacs.domain.auth.Auth
 import com.utn.tacs.domain.user.User
 import io.circe.Json
@@ -23,7 +24,8 @@ class MatchEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
 
   private val getMatchByIdEndpoint: AuthEndpoint[F, Auth] = {
     case GET -> Root / matchId asAuthed _ => {
-      service.getMatch(matchId).value match {
+      val result: EitherT[F, MatchNotFoundError.type, Match] = service.getMatch(matchId)
+      result.value.flatMap {
         case Left(MatchNotFoundError) => NotFound()
         case Right(m) => Ok(m.asJson)
       }
@@ -33,27 +35,25 @@ class MatchEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
   implicit val createMatchDecoder: EntityDecoder[F, CreateMatchDTO] = jsonOf
   private val createMatchEndpoint: AuthEndpoint[F, Auth] = {
     case req@POST -> Root asAuthed _ =>
-      val action = for {
+      val action: F[Either[MatchAlreadyExistsError, Match]] = for {
         post <- req.request.as[CreateMatchDTO]
-        newMatch <- service.createMatch(post.player1, post.player2, post.deckId).value
-      } yield newMatch
-
+        result <- service.createMatch(post.player1, post.player2, post.deckId).value
+      } yield result
       action.flatMap {
-        case Right(m) => Ok(m.asJson)
-        case Left(_) => InternalServerError()
+        case Right(value) => Ok(value.asJson)
+        case Left(MatchAlreadyExistsError(_)) => InternalServerError()
       }
   }
 
   implicit val withdrawMatchDecoder: EntityDecoder[F, WithdrawMatchDto] = jsonOf
   private val withdrawMatchEndpoint: AuthEndpoint[F, Auth] = {
     case req@PUT -> Root / matchId / "withdraw" asAuthed _ =>
-      val action = for {
+      val action: F[Either[MatchNotFoundError.type, Match]] = for {
         payload <- req.request.as[WithdrawMatchDto]
         result <- service.withdraw(matchId, payload.loserPlayer).value
       } yield result
-
-      action match {
-        case Left(_) => NotFound()
+      action.flatMap {
+        case Left(MatchNotFoundError) => NotFound()
         case Right(m) => Accepted(m.asJson)
       }
   }

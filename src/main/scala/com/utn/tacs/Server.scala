@@ -1,59 +1,75 @@
 package com.utn.tacs
 
-import cats.effect.{ConcurrentEffect, ContextShift, Resource, Timer}
-import com.utn.tacs.domain.`match`.MatchService
-import com.utn.tacs.domain.deck.DeckService
-import org.http4s.server.middleware.{CORS, CORSConfig}
-
-import scala.concurrent.duration.DurationInt
-//import com.utn.tacs.domain.`match`.MatchService
-//import com.utn.tacs.domain.`match`.MatchService
-import com.utn.tacs.domain.`match`.MatchValidation
+import cats.Id
+import cats.effect.{ConcurrentEffect, ContextShift, Timer}
+import com.utn.tacs.domain.`match`.{MatchService, MatchValidation}
 import com.utn.tacs.domain.auth.Auth
 import com.utn.tacs.domain.cards._
-//import com.utn.tacs.domain.deck._
+import com.utn.tacs.domain.deck.DeckService
 import com.utn.tacs.domain.user.{UserService, UserValidation}
 import com.utn.tacs.infrastructure.endpoint._
 import com.utn.tacs.infrastructure.repository.memory._
+import fs2.INothing
+import fs2.concurrent.{Queue, Topic}
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.client.middleware.FollowRedirect
 import org.http4s.implicits._
+import org.http4s.server.Router
 import org.http4s.server.blaze.BlazeServerBuilder
-import org.http4s.server.middleware.Logger
-import org.http4s.server.{Router, Server => H4Server}
+import org.http4s.server.middleware.{CORS, CORSConfig, Logger}
 import tsec.authentication.SecuredRequestHandler
 import tsec.mac.jca.HMACSHA256
 import tsec.passwordhashers.jca.BCrypt
 
 import scala.concurrent.ExecutionContext.global
+import scala.concurrent.duration.DurationInt
 
 
 object Server {
-
-  def createServer[F[+_] : ContextShift : ConcurrentEffect : Timer]: Resource[F, H4Server[F]] = {
+  def createServer[F[+_] : ContextShift : ConcurrentEffect : Timer](
+    q: Queue[F, FromClient],
+    t: Topic[F, ToClient]
+  ): fs2.Stream[F, INothing] = {
     val corsConfig = CORSConfig(
       anyOrigin = false,
       allowCredentials = false,
       maxAge = 1.day.toSeconds,
+      allowedHeaders = Some(Set("Content-Type", "Authorization", "*", "Upgrade", "Connection")),
       allowedOrigins = List("http://localhost:3000").contains(_)
     )
+
+    val key = HMACSHA256.generateKey[Id]
 
     val userRepo = UserMemoryRepository()
     val cardRepo = CardMemoryRepository()
     val matchRepo = MatchMemoryRepository()
     val deckRepo = DeckMemoryRepository()
+    val authRepo = AuthMemoryRepository(key)
+
+    val authenticator = Auth.jwtAuthenticator[F, HMACSHA256](key, authRepo, userRepo)
+
+    val routeAuth = SecuredRequestHandler(authenticator)
+    val deckEndpoints = DeckEndpoints[F, HMACSHA256](
+      repository = deckRepo,
+      service = DeckService(deckRepo),
+      auth = routeAuth
+    )
+
+    val userEndpoints = UserEndpoints.endpoints[F, BCrypt, HMACSHA256](
+      userService = UserService(userRepo, validation = UserValidation(userRepo)),
+      cryptService = BCrypt.syncPasswordHasher[F],
+      auth = routeAuth
+    )
+
+    val matchEndpoints = MatchEndpoints[F, HMACSHA256](
+      service = MatchService(matchRepo, validation = MatchValidation(matchRepo)),
+      auth = routeAuth
+    )
+
+    val x = Algo.chatRoutes(q, t)
 
     for {
-      client <- BlazeClientBuilder[F](global).resource.map(FollowRedirect(3)(_))
-      key <- Resource.liftF(HMACSHA256.generateKey[F])
-
-      routeAuth = SecuredRequestHandler(
-        authenticator = Auth.jwtAuthenticator[F, HMACSHA256](
-          key,
-          authRepo = AuthMemoryRepository(key),
-          userRepo
-        )
-      )
+      client <- BlazeClientBuilder[F](global).stream.map(FollowRedirect(3)(_))
 
       cardEndpoints = CardEndpoints[F, HMACSHA256](
         repository = cardRepo,
@@ -66,35 +82,19 @@ object Server {
         service = SuperheroAPIService(client)
       )
 
-      deckEndpoints = DeckEndpoints[F, HMACSHA256](
-        repository = deckRepo,
-        service = DeckService(deckRepo),
-        auth = routeAuth
-      )
-
-      userEndpoints = UserEndpoints.endpoints[F, BCrypt, HMACSHA256](
-        userService = UserService(userRepo, validation = UserValidation(userRepo)),
-        cryptService = BCrypt.syncPasswordHasher[F],
-        auth = routeAuth
-      )
-
-      matchEndpoints = MatchEndpoints[F, HMACSHA256](
-        service = MatchService(matchRepo, validation = MatchValidation(matchRepo)),
-        auth = routeAuth
-      )
-
       httpApp = Router(
         "/cards" -> CORS(cardEndpoints, corsConfig),
         "/superheros" -> CORS(superheroEndpoints, corsConfig),
         "/decks" -> CORS(deckEndpoints, corsConfig),
         "/users" -> CORS(userEndpoints, corsConfig),
-        "/matches" -> CORS(matchEndpoints, corsConfig)
+        "/matches" -> CORS(matchEndpoints, corsConfig),
+        "/ws" -> x
       ).orNotFound
 
       exitCode <- BlazeServerBuilder[F](global)
         .bindHttp(8080, "0.0.0.0")
         .withHttpApp(Logger.httpApp(logHeaders = true, logBody = false)(httpApp))
-        .resource
+        .serve
     } yield exitCode
-  }
+  }.drain
 }
