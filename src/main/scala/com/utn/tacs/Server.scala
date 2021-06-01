@@ -49,21 +49,28 @@ object Server {
     val authenticator = Auth.jwtAuthenticator[F, HMACSHA256](key, authRepo, userRepo)
 
     val routeAuth = SecuredRequestHandler(authenticator)
+
+    val deckService = DeckService(deckRepo)
     val deckEndpoints = DeckEndpoints[F, HMACSHA256](
       repository = deckRepo,
-      service = DeckService(deckRepo),
+      deckService,
       auth = routeAuth
     )
 
+    val userService = UserService(userRepo, validation = UserValidation(userRepo))
     val userEndpoints = UserEndpoints.endpoints[F, BCrypt, HMACSHA256](
-      userService = UserService(userRepo, validation = UserValidation(userRepo)),
+      userService,
       cryptService = BCrypt.syncPasswordHasher[F],
       auth = routeAuth
     )
 
     val matchEndpoints = MatchEndpoints[F, HMACSHA256](
       service = MatchService(matchRepo, validation = MatchValidation(matchRepo)),
-      auth = routeAuth
+      userService,
+      deckService,
+      auth = routeAuth,
+      q,
+      t
     )
 
     val x = Algo.chatRoutes(q, t)
@@ -87,7 +94,7 @@ object Server {
         "/superheros" -> CORS(superheroEndpoints, corsConfig),
         "/decks" -> CORS(deckEndpoints, corsConfig),
         "/users" -> CORS(userEndpoints, corsConfig),
-        "/matches" -> CORS(matchEndpoints, corsConfig),
+        "/matches" -> matchEndpoints, // , corsConfig),
         "/ws" -> x
       ).orNotFound
 

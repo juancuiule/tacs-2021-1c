@@ -45,11 +45,11 @@ object Main extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     for (
       q <- Queue.unbounded[IO, FromClient];
-      t <- Topic[IO, ToClient](ToClient("==="));
+      t: Topic[IO, ToClient] <- Topic[IO, ToClient](ToClient("==="));
       ref <- Ref.of[IO, State](State(1));
 
       exitCode <- {
-        val messageStream = q.dequeue.evalMap(fromClient => {
+        val messageStream: Stream[IO, Unit] = q.dequeue.evalMap(fromClient => {
           ref.modify(currentState => {
             (State(currentState.messageCount + 1), ToClient(s"(${currentState.messageCount}): ${fromClient.userName} - ${fromClient.message}"))
           })

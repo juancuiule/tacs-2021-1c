@@ -1,13 +1,14 @@
 package com.utn.tacs.infrastructure.repository.memory
 
-import com.utn.tacs.domain.`match`.{Match, MatchRepository, Round}
+import com.utn.tacs.domain.`match`.Match.MatchStep
+import com.utn.tacs.domain.`match`.{Match, MatchRepository}
 
 import scala.collection.concurrent.TrieMap
 
 class MatchMemoryRepository extends MatchRepository {
 
   private val matchDB = new TrieMap[String, Match]()
-  private val roundsDB = new TrieMap[String, List[Round]]()
+  private val roundsDB = new TrieMap[String, List[MatchStep]]()
 
   def getMatch(matchId: String): Option[Match] = matchDB.get(matchId)
 
@@ -20,7 +21,7 @@ class MatchMemoryRepository extends MatchRepository {
     matchDB.replace(upMatch.matchId, upMatch)
   }
 
-  def getMatchRounds(matchId: String): Option[List[Round]] = {
+  def getMatchRounds(matchId: String): Option[List[MatchStep]] = {
     roundsDB.get(matchId)
   }
 }

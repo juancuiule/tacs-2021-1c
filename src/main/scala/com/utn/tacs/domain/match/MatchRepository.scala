@@ -1,5 +1,7 @@
 package com.utn.tacs.domain.`match`
 
+import com.utn.tacs.domain.`match`.Match.MatchStep
+
 trait MatchRepository {
   def getMatch(matchId: String): Option[Match]
 
@@ -7,6 +9,6 @@ trait MatchRepository {
 
   def updateMatch(upMatch: Match): Option[Match]
 
-  def getMatchRounds(matchId: String): Option[List[Round]]
+  def getMatchRounds(matchId: String): Option[List[MatchStep]]
 }
 
