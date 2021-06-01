@@ -8,7 +8,20 @@ final case class Stats(
   power: Int,
   combat: Int,
   strength: Int
-)
+) {
+  def get(key: String): Int = {
+    key match {
+      case "height" => height
+      case "weight" => weight
+      case "intelligence" => intelligence
+      case "speed" => speed
+      case "power" => power
+      case "combat" => combat
+      case "strength" => strength
+      case _ => ???
+    }
+  }
+}
 
 final case class Biography(fullName: String, publisher: String)
 

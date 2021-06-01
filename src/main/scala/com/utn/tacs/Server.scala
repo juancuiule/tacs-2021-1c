@@ -1,7 +1,7 @@
 package com.utn.tacs
 
 import cats.Id
-import cats.effect.{ConcurrentEffect, ContextShift, Timer}
+import cats.effect.{ConcurrentEffect, ContextShift, ExitCode, Timer}
 import com.utn.tacs.domain.`match`.{MatchService, MatchValidation}
 import com.utn.tacs.domain.auth.Auth
 import com.utn.tacs.domain.cards._
@@ -9,7 +9,6 @@ import com.utn.tacs.domain.deck.DeckService
 import com.utn.tacs.domain.user.{UserService, UserValidation}
 import com.utn.tacs.infrastructure.endpoint._
 import com.utn.tacs.infrastructure.repository.memory._
-import fs2.INothing
 import fs2.concurrent.{Queue, Topic}
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.client.middleware.FollowRedirect
@@ -17,6 +16,7 @@ import org.http4s.implicits._
 import org.http4s.server.Router
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.server.middleware.{CORS, CORSConfig, Logger}
+import org.http4s.websocket.WebSocketFrame
 import tsec.authentication.SecuredRequestHandler
 import tsec.mac.jca.HMACSHA256
 import tsec.passwordhashers.jca.BCrypt
@@ -27,9 +27,9 @@ import scala.concurrent.duration.DurationInt
 
 object Server {
   def createServer[F[+_] : ContextShift : ConcurrentEffect : Timer](
-    q: Queue[F, FromClient],
-    t: Topic[F, ToClient]
-  ): fs2.Stream[F, INothing] = {
+    q: Queue[F, WebSocketFrame],
+    t: Topic[F, WebSocketFrame]
+  ): fs2.Stream[F, ExitCode] = {
     val corsConfig = CORSConfig(
       anyOrigin = false,
       allowCredentials = false,
@@ -73,8 +73,6 @@ object Server {
       t
     )
 
-    val x = Algo.chatRoutes(q, t)
-
     for {
       client <- BlazeClientBuilder[F](global).stream.map(FollowRedirect(3)(_))
 
@@ -95,7 +93,7 @@ object Server {
         "/decks" -> CORS(deckEndpoints, corsConfig),
         "/users" -> CORS(userEndpoints, corsConfig),
         "/matches" -> matchEndpoints, // , corsConfig),
-        "/ws" -> x
+//        "/ws" -> x
       ).orNotFound
 
       exitCode <- BlazeServerBuilder[F](global)
@@ -103,5 +101,5 @@ object Server {
         .withHttpApp(Logger.httpApp(logHeaders = true, logBody = false)(httpApp))
         .serve
     } yield exitCode
-  }.drain
+  }
 }

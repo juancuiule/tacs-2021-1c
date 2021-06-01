@@ -36,7 +36,7 @@ class MatchService[F[+_] : Applicative](
 
   def withdraw(matchId: String, loserPlayer: User): EitherT[F, MatchNotFoundError.type, Match] = EitherT.fromEither {
     repository.getMatch(matchId).fold[Either[MatchNotFoundError.type, Match]](Left(MatchNotFoundError))(m => {
-      val newMatch = m.play(Withdraw(loserPlayer))
+      val newMatch = m.play(MatchAction.Withdraw(loserPlayer))
       val updated = repository.updateMatch(newMatch)
       updated match {
         case None => Left(MatchNotFoundError)

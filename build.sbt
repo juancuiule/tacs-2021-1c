@@ -24,6 +24,11 @@ lazy val root = (project in file("."))
       "org.http4s" %% "http4s-circe",
       "org.http4s" %% "http4s-dsl").map(_ % Http4sVersion),
     libraryDependencies ++= Seq(
+      "co.fs2" %% "fs2-core",
+      "co.fs2" %% "fs2-io",
+      "co.fs2" %% "fs2-reactive-streams"
+    ).map(_ % "2.5.3"),
+    libraryDependencies ++= Seq(
       "io.circe" %% "circe-generic",
       "io.circe" %% "circe-literal").map(_ % CirceVersion),
     libraryDependencies ++= Seq(

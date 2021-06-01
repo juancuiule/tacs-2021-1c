@@ -1,24 +1,30 @@
 package com.utn.tacs
 
-import java.time.Instant
-
 import cats.effect.IO
+import com.utn.tacs.domain.auth.SignupRequest
+import com.utn.tacs.domain.cards.{Biography, Card, Stats}
 import com.utn.tacs.domain.deck.Deck
-import domain.auth.SignupRequest
-import org.scalacheck._
+import com.utn.tacs.domain.user.{Role, _}
 import org.scalacheck.Arbitrary.arbitrary
-import domain.user.{Role, _}
-import tsec.common.SecureRandomId
-import tsec.jwt.JWTClaims
+import org.scalacheck._
 import tsec.authentication.AugmentedJWT
+import tsec.common.SecureRandomId
 import tsec.jws.mac._
+import tsec.jwt.JWTClaims
 import tsec.mac.jca._
+
+import java.time.Instant
 
 trait SuperAmigosArbitraries {
   val userNameLength = 16
   val userNameGen: Gen[String] = Gen.listOfN(userNameLength, Gen.alphaChar).map(_.mkString)
   val deckNameGen: Gen[String] = Gen.listOfN(10, Gen.asciiChar).map(_.mkString)
 
+  val cardUrlGen: Gen[String] = Gen.oneOf(
+    "https://www.superherodb.com/pictures2/portraits/10/100/174.jpg",
+    "https://www.superherodb.com/pictures2/portraits/10/100/1536.jpg",
+    "https://www.superherodb.com/pictures2/portraits/10/100/957.jpg"
+  )
 
   implicit val instant: Arbitrary[Instant] = Arbitrary[Instant] {
     for {
@@ -37,6 +43,15 @@ trait SuperAmigosArbitraries {
     } yield User(userName, password, id, role)
   }
 
+  implicit val card: Arbitrary[Card] = Arbitrary[Card] {
+    for {
+//      id <- Gen.posNum[Int]
+      name <- deckNameGen
+      url <- cardUrlGen
+      height <- Gen.option(Gen.posNum[Int])
+    } yield Card(10, name, stats = Stats(height.getOrElse(10), 10, 10, 10, 10, 10, 10), biography = Biography("a", "b"), image = url)
+  }
+
   implicit val deck: Arbitrary[Deck] = Arbitrary[Deck] {
     for {
       deckName <- deckNameGen
@@ -45,6 +60,7 @@ trait SuperAmigosArbitraries {
   }
 
   case class AdminUser(value: User)
+
   case class PlayerUser(value: User)
 
   implicit val adminUser: Arbitrary[AdminUser] = Arbitrary {
@@ -71,7 +87,7 @@ trait SuperAmigosArbitraries {
     for {
       key <- Gen.const(HMACSHA256.unsafeGenerateKey)
       claims <- Gen.finiteDuration.map(exp =>
-        JWTClaims.withDuration[IO](expiration = Some(exp)).unsafeRunSync(),
+        JWTClaims.withDuration[IO](expiration = Some(exp)).unsafeRunSync()
       )
     } yield JWTMacImpure
       .build[HMACSHA256](claims, key)
@@ -80,7 +96,7 @@ trait SuperAmigosArbitraries {
 
   implicit def augmentedJWT[A, I](implicit
     arb1: Arbitrary[JWTMac[A]],
-    arb2: Arbitrary[I],
+    arb2: Arbitrary[I]
   ): Arbitrary[AugmentedJWT[A, I]] =
     Arbitrary {
       for {
