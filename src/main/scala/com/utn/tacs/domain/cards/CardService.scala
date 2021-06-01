@@ -4,8 +4,6 @@ import cats.data.EitherT
 import cats.effect.Sync
 import cats.implicits._
 import cats.{Applicative, Monad}
-
-
 trait CardError extends Serializable with Product
 
 case class CardAlreadyExistsError(card: Card) extends CardError
@@ -13,10 +11,9 @@ case class CardAlreadyExistsError(card: Card) extends CardError
 case object CardNotFoundError extends CardError
 
 class CardService[F[+_] : Applicative](
-                                        repository: CardRepository,
-                                        validation: CardValidation[F]
-                                      ) {
-
+  repository: CardRepository,
+  validation: CardValidation[F]
+) {
   def create(card: Card)(implicit M: Monad[F]): EitherT[F, CardAlreadyExistsError, Card] =
     for {
       _ <- validation.doesNotExist(card)

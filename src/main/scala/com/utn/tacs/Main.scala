@@ -59,7 +59,6 @@ object ChatServer {
 
 object Main extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
-
     for (
       q <- Queue.unbounded[IO, FromClient];
       t <- Topic[IO, ToClient](ToClient("==="));
