@@ -59,6 +59,7 @@ object ChatServer {
 
 object Main extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
+    //        Server.createServer.use(_ => IO.never).as(ExitCode.Success)
     for (
       q <- Queue.unbounded[IO, FromClient];
       t <- Topic[IO, ToClient](ToClient("==="));
@@ -75,7 +76,6 @@ object Main extends IOApp {
         val combinedStream = Stream(messageStream, serverStream).parJoinUnbounded
         Server.createServer.use(_ =>
           combinedStream.compile.drain.as(ExitCode.Success))
-        //        Server.createServer.use(_ => IO.never).as(ExitCode.Success)
       }
     ) yield exitCode
   }

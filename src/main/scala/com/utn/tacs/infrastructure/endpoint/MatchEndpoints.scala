@@ -1,17 +1,18 @@
 package com.utn.tacs.infrastructure.endpoint
 
 import cats.effect.Sync
-import com.utn.tacs.domain.`match`.{Match, MatchService}
+import cats.syntax.all._
+import com.utn.tacs.domain.`match`.{Match, MatchNotFoundError, MatchService}
 import com.utn.tacs.domain.auth.Auth
 import com.utn.tacs.domain.user.User
+import io.circe.Json
 import io.circe.generic.auto._
-import org.http4s.circe.CirceEntityCodec.circeEntityEncoder
-import org.http4s.circe.jsonOf
+import io.circe.syntax._
+import org.http4s.circe.{jsonOf, _}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.{EntityDecoder, HttpRoutes}
 import tsec.authentication.{AugmentedJWT, SecuredRequestHandler, _}
 import tsec.jwt.algorithms.JWTMacAlgo
-
 
 class MatchEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
   service: MatchService[F],
@@ -20,43 +21,64 @@ class MatchEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
 
   implicit def decoder[T[_] : Sync]: EntityDecoder[T, Match] = jsonOf[T, Match]
 
-  def routes(): AuthEndpoint[F, Auth] = {
-    //val dsl = new Http4sDsl[F] {}
-    //import dsl._
-    //    HttpRoutes.of[F] {
+  private val getMatchByIdEndpoint: AuthEndpoint[F, Auth] = {
     case GET -> Root / matchId asAuthed _ => {
-//      player1Id: String, player2Id: String, deckId: String
-      service.createMatch("", "", "")
-      Ok(matchId)
+      service.getMatch(matchId).value match {
+        case Left(MatchNotFoundError) => NotFound()
+        case Right(m) => Ok(m.asJson)
+      }
     }
-//      service.getMatch(matchId)
-//        .map(m => Ok(m.asJson))
-//        .getOrElse(NotFound(s"match:${matchId} not found"))
-//    case req@POST -> Root asAuthed _ =>
-//      for {
-//        payload <- req.request.as[Map[String, String]]
-//        newMatch <- service.createMatch(payload("player1_id"), payload("player2_id"), payload("deck_id"))
-//        resp <- Created(newMatch.asJson)
-//      } yield resp
-//    case req@PUT -> Root / matchId / "withdraw" asAuthed _ =>
-//      for {
-//        payload <- req.request.as[Map[String, String]]
-//        loserPlayer = payload("loser_player_id")
-//        withDrawResult = service.withdraw(matchId, loserPlayer)
-//        resp <- withDrawResult match {
-//          case Left(_) => NotFound()
-//          case Right(m) => Accepted(m.asJson)
-//        }
-//      } yield resp
-//    case GET -> Root / matchId / "replay" asAuthed _ =>
-//      Ok(service.getPlayedRounds(matchId)
-//        .map(r => r.asJson))
   }
-  //  }
+
+  implicit val createMatchDecoder: EntityDecoder[F, CreateMatchDTO] = jsonOf
+  private val createMatchEndpoint: AuthEndpoint[F, Auth] = {
+    case req@POST -> Root asAuthed _ =>
+      val action = for {
+        post <- req.request.as[CreateMatchDTO]
+        newMatch <- service.createMatch(post.player1, post.player2, post.deckId).value
+      } yield newMatch
+
+      action.flatMap {
+        case Right(m) => Ok(m.asJson)
+        case Left(_) => InternalServerError()
+      }
+  }
+
+  implicit val withdrawMatchDecoder: EntityDecoder[F, WithdrawMatchDto] = jsonOf
+  private val withdrawMatchEndpoint: AuthEndpoint[F, Auth] = {
+    case req@PUT -> Root / matchId / "withdraw" asAuthed _ =>
+      val action = for {
+        payload <- req.request.as[WithdrawMatchDto]
+        result <- service.withdraw(matchId, payload.loserPlayer).value
+      } yield result
+
+      action match {
+        case Left(_) => NotFound()
+        case Right(m) => Accepted(m.asJson)
+      }
+  }
+
+  private val getMatchReplayEndpoint: AuthEndpoint[F, Auth] = {
+    case GET -> Root / matchId / "replay" asAuthed _ =>
+      service.getPlayedRounds(matchId) match {
+        case Some(rounds) => Ok(Json.obj(("rounds", rounds.asJson)))
+        case None => NotFound()
+      }
+  }
 
   def endpoints(): HttpRoutes[F] = {
-    auth.liftService(Auth.allRoles(routes()))
+    val authEndpoints = Auth.allRoles(
+      getMatchByIdEndpoint
+        .orElse(createMatchEndpoint)
+        .orElse(withdrawMatchEndpoint)
+        .orElse(getMatchReplayEndpoint)
+    )
+    auth.liftService(authEndpoints)
   }
+
+  case class CreateMatchDTO(player1: String, player2: String, deckId: String)
+
+  case class WithdrawMatchDto(loserPlayer: String)
 }
 
 object MatchEndpoints {

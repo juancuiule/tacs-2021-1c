@@ -28,28 +28,23 @@ class MatchService[F[+_] : Applicative](
   def getMatch(matchId: String): EitherT[F, MatchNotFoundError.type, Match] = {
     EitherT.fromOptionF(repository.getMatch(matchId).pure[F], MatchNotFoundError)
   }
-//
-//  def withdraw(matchId: String, loserPlayer: String): Either[MatchError, Match] = {
-//    repository.getMatch(matchId)
-//      .map(m => {
-//        val winnerId = if (m.player1Id.equals(loserPlayer)) {
-//          m.player2Id
-//        } else {
-//          m.player1Id
-//        }
-//        m.copy(status = "finished", winnerId = winnerId)
-//
-//        val updateResult: Option[Match] = repository.updateMatch(m)
-//        updateResult match {
-//          case None => Left(MatchNotFoundError)
-//          case Some(m) => Right(m)
-//        }
-//      }).getOrElse(Left(MatchNotFoundError))
-//  }
-//
-//  def getPlayedRounds(matchId: String): List[Round] = {
-//    repository.getMatchRounds(matchId)
-//  }
+
+  def withdraw(matchId: String, loserPlayer: String): EitherT[F, MatchNotFoundError.type, Match] = EitherT.fromEither {
+    repository.getMatch(matchId).fold[Either[MatchNotFoundError.type, Match]](Left(MatchNotFoundError))(m => {
+      val winnerId = if (m.player1Id.equals(loserPlayer)) m.player2Id else m.player1Id
+      val newMatch = m.copy(status = "finished", winnerId = winnerId)
+
+      val updated = repository.updateMatch(newMatch)
+      updated match {
+        case None => Left(MatchNotFoundError)
+        case Some(m) => Right(m)
+      }
+    })
+  }
+
+  def getPlayedRounds(matchId: String): Option[List[Round]] = {
+    repository.getMatchRounds(matchId)
+  }
 }
 
 object MatchService {

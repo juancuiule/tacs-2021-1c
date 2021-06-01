@@ -7,6 +7,6 @@ trait MatchRepository {
 
   def updateMatch(upMatch: Match): Option[Match]
 
-//  def getMatchRounds(matchId: String): List[Round]
+  def getMatchRounds(matchId: String): Option[List[Round]]
 }
 
