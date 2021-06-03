@@ -116,10 +116,25 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
         json <- parse(text)
         message <- json.as[SocketMessage]
       } yield message) match {
-        case Left(error) =>
-          msgQueue.enqueue1(Text(error.toString))
+        case Left(e) => msgQueue.enqueue1(Text(e.toString))
         case Right(message) =>
-          (topic.publish1 _ compose transformMessage compose stampMessage) (message)
+          message._parse() match {
+            case Left(e2) => msgQueue.enqueue1(Text(e2.toString))
+            case Right(matchAction) => {
+              val action = for {
+                result <- service.executeAction(message.matchId, matchAction).value
+              } yield result
+              action.flatMap {
+                case Left(MatchNotFoundError) => msgQueue.enqueue1(Text("match not found"))
+                case Right(newMatch) => (topic.publish1 _ compose transformMessage compose stampMessage) (SocketMessage(
+                  newMatch.matchId,
+                  message.author,
+                  message.action,
+                  payload = newMatch.currentState.asJson.toString(),
+                ))
+              }
+            }
+          }
       }
     case frame =>
       msgQueue.enqueue1(Text(s"Cannot handle the frame ${frame.opcode}"))

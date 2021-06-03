@@ -34,9 +34,11 @@ class MatchService[F[+_] : Applicative](
     EitherT.fromOptionF(repository.getMatch(matchId).pure[F], MatchNotFoundError)
   }
 
-  def withdraw(matchId: String, loserPlayer: User): EitherT[F, MatchNotFoundError.type, Match] = EitherT.fromEither {
+  def withdraw(matchId: String, loserPlayer: User): EitherT[F, MatchNotFoundError.type, Match] = executeAction(matchId, MatchAction.Withdraw(loserPlayer))
+
+  def executeAction(matchId: String, matchAction: MatchAction): EitherT[F, MatchNotFoundError.type, Match] = EitherT.fromEither {
     repository.getMatch(matchId).fold[Either[MatchNotFoundError.type, Match]](Left(MatchNotFoundError))(m => {
-      val newMatch = m.play(MatchAction.Withdraw(loserPlayer))
+      val newMatch = m.play(matchAction)
       val updated = repository.updateMatch(newMatch)
       updated match {
         case None => Left(MatchNotFoundError)
@@ -44,6 +46,8 @@ class MatchService[F[+_] : Applicative](
       }
     })
   }
+
+  def battleByAttribute(matchId: String, attribute: String): EitherT[F, MatchNotFoundError.type, Match] = executeAction(matchId, MatchAction.Battle(attribute))
 
   def getPlayedRounds(matchId: String): Option[List[MatchStep]] = {
     repository.getMatchRounds(matchId)

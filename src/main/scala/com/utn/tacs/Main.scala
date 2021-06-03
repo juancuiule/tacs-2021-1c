@@ -14,16 +14,8 @@ object Main extends IOApp {
     for {
       q <- Queue.unbounded[IO, WebSocketFrame];
       t <- Topic[IO, WebSocketFrame](WebSocketFrame.Text("==="))
-//      ref <- Ref.of[IO, State](State(1))
 
       exitCode <- {
-//        val messageStream: Stream[IO, Unit] = q.dequeue.evalMap {
-//          case Text(str, _) => {
-//            ref.modify(currState => (currState, Text(str)))
-//          }
-//        }.through(t.publish)
-
-//        val combinedStream = Stream(messageStream, Server.createServer[IO](q, t)).parJoinUnbounded
         Server.createServer[IO](q, t).compile.drain.as(ExitCode.Success)
       }
     } yield exitCode
