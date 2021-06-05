@@ -1,9 +1,6 @@
 package com.utn.tacs.domain.`match`
 
 import com.utn.tacs.domain.`match`.Match.MatchStep
-import com.utn.tacs.domain.cards.Card
-import com.utn.tacs.domain.deck.Deck
-import com.utn.tacs.domain.user.User
 
 
 sealed trait MatchAction extends (Match => Match) {
@@ -13,7 +10,7 @@ sealed trait MatchAction extends (Match => Match) {
 }
 
 object MatchAction {
-  case class Withdraw(loser: User) extends MatchAction
+  case class Withdraw(loser: Long) extends MatchAction
 
   case class Battle(cardAttribute: String) extends MatchAction
 
@@ -25,24 +22,24 @@ object MatchAction {
 sealed trait MatchState
 
 object MatchState {
-  case class BattleResult(cardsInDeck: List[Card], player1Cards: List[Card], player2Cards: List[Card])
+  case class BattleResult(cardsInDeck: List[Int], player1Cards: List[Int], player2Cards: List[Int])
     extends MatchState
 
-  case class PreBattle(cardsInDeck: List[Card], player1Cards: List[Card], player2Cards: List[Card], player1Card: Card, player2Card: Card)
+  case class PreBattle(cardsInDeck: List[Int], player1Cards: List[Int], player2Cards: List[Int], player1Card: Int, player2Card: Int)
     extends MatchState
 
-  case class Finished(winner: User)
+  case class Finished(winner: Long)
     extends MatchState
 
-  case class Draw(cardsInDeck: List[Card], player1Cards: List[Card], player2Cards: List[Card]) extends MatchState
+  case class Draw(cardsInDeck: List[Int], player1Cards: List[Int], player2Cards: List[Int]) extends MatchState
 }
 
 
 final case class Match(
   matchId: String,
-  deck: Deck,
-  player1: User,
-  player2: User,
+  deck: Int,
+  player1: Long,
+  player2: Long,
   steps: List[MatchStep]
 ) {
   type MatchStep = (MatchAction, MatchState)
@@ -64,17 +61,21 @@ final case class Match(
       case (_: Draw, _) => prevState
       case (_, NoOp) => prevState
       case (_, Withdraw(loser)) =>
-        val winner = if (loser.id.equals(player1.id)) player2 else player1
+        println(s"withdraw player1: ${player1}, player2: ${player2}")
+        println(s"withdraw loser: ${loser}")
+        val winner = if (loser.equals(player1)) player2 else player1
+        println(s"withdraw winner: ${winner}")
         Finished(winner)
       case (PreBattle(cardsInDeck, player1Cards, player2Cards, card1, card2), Battle(cardAttribute)) =>
         println(s"To battle by ${cardAttribute}")
-        if (card1.stats.get(cardAttribute) > card2.stats.get(cardAttribute)) {
-          BattleResult(cardsInDeck, player1Cards :+ card1 :+ card2, player2Cards)
-        } else if (card1.stats.get(cardAttribute) < card2.stats.get(cardAttribute)) {
-          BattleResult(cardsInDeck, player1Cards, player2Cards :+ card1 :+ card2)
-        } else {
-          BattleResult(cardsInDeck, player1Cards :+ card1, player2Cards :+ card2)
-        }
+        BattleResult(cardsInDeck, player1Cards :+ card1, player2Cards :+ card2)
+//        if (card1.stats.get(cardAttribute) > card2.stats.get(cardAttribute)) {
+//          BattleResult(cardsInDeck, player1Cards :+ card1 :+ card2, player2Cards)
+//        } else if (card1.stats.get(cardAttribute) < card2.stats.get(cardAttribute)) {
+//          BattleResult(cardsInDeck, player1Cards, player2Cards :+ card1 :+ card2)
+//        } else {
+//          BattleResult(cardsInDeck, player1Cards :+ card1, player2Cards :+ card2)
+//        }
       case (BattleResult(cards, cards1, cards2), DealCards) => {
         println(s"Dealing the remaining cards: ${cards.length}")
         cards.length match {
@@ -108,13 +109,13 @@ object Match {
 
   def apply(
     matchId: String,
-    deck: Deck,
-    player1: User,
-    player2: User
+    deck: Int,
+    player1: Long,
+    player2: Long
   ): Match = {
     this (matchId, deck, player1, player2, List(
-      (NoOp, BattleResult(List[Card](), List[Card](), List[Card]()))
-    ))
+      (NoOp, BattleResult(List[Int](1, 2, 3), List[Int](), List[Int]()))
+    )).play(DealCards)
   }
 }
 

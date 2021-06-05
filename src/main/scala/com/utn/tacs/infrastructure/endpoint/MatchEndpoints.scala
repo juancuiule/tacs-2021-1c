@@ -67,7 +67,7 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
         player2 <- userService.getUserByName(post.player2).value
         deck <- deckService.get(post.deckId).value
         result <- (player2, deck) match {
-          case (Right(user2), Some(_deck)) => service.createMatch(player1, user2, _deck).value
+          case (Right(user2), Some(_deck)) => service.createMatch(player1.id.get, user2.id.get, _deck.id).value
           case _ => Left(MatchAlreadyExistsError).pure[F]
         }
       } yield result
@@ -76,17 +76,17 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
         case Left(MatchAlreadyExistsError) => InternalServerError()
       }
   }
-  private val withdrawMatchEndpoint: AuthEndpoint[F, Auth] = {
-    case req@PUT -> Root / matchId / "withdraw" asAuthed _ =>
-      val loserPlayer = req.identity
-      val action: F[Either[MatchNotFoundError.type, Match]] = for {
-        result <- service.withdraw(matchId, loserPlayer).value
-      } yield result
-      action.flatMap {
-        case Left(MatchNotFoundError) => NotFound()
-        case Right(m) => Accepted(m.asJson)
-      }
-  }
+//  private val withdrawMatchEndpoint: AuthEndpoint[F, Auth] = {
+//    case req@PUT -> Root / matchId / "withdraw" asAuthed _ =>
+//      val loserPlayer = req.identity
+//      val action: F[Either[MatchNotFoundError.type, Match]] = for {
+//        result <- service.withdraw(matchId, loserPlayer.id).value
+//      } yield result
+//      action.flatMap {
+//        case Left(MatchNotFoundError) => NotFound()
+//        case Right(m) => Accepted(m.asJson)
+//      }
+//  }
   private val getMatchReplayEndpoint: AuthEndpoint[F, Auth] = {
     case GET -> Root / matchId / "replay" asAuthed _ =>
       service.getPlayedRounds(matchId) match {
@@ -101,7 +101,7 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
     val authEndpoints = Auth.allRoles(
       getMatchByIdEndpoint
         .orElse(createMatchEndpoint)
-        .orElse(withdrawMatchEndpoint)
+//        .orElse(withdrawMatchEndpoint)
         .orElse(getMatchReplayEndpoint)
     )
     connectToMatchRoom <+>

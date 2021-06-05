@@ -19,6 +19,7 @@ class MatchMemoryRepository extends MatchRepository {
 
   def updateMatch(upMatch: Match): Option[Match] = {
     matchDB.replace(upMatch.matchId, upMatch)
+    Some(upMatch)
   }
 
   def getMatchRounds(matchId: String): Option[List[MatchStep]] = {

@@ -4,8 +4,6 @@ import cats.data.EitherT
 import cats.implicits.catsSyntaxApplicativeId
 import cats.{Applicative, Monad}
 import com.utn.tacs.domain.`match`.Match.MatchStep
-import com.utn.tacs.domain.deck.Deck
-import com.utn.tacs.domain.user.User
 
 import scala.util.Random
 
@@ -21,7 +19,7 @@ class MatchService[F[+_] : Applicative](
   repository: MatchRepository,
   validation: MatchValidation[F]
 ) {
-  def createMatch(player1: User, player2: User, deck: Deck)(implicit M: Monad[F]): EitherT[F, MatchAlreadyExistsError.type, Match] = {
+  def createMatch(player1: Long, player2: Long, deck: Int)(implicit M: Monad[F]): EitherT[F, MatchAlreadyExistsError.type, Match] = {
     val matchId = Random.alphanumeric.take(15).mkString("")
     val newMatch = Match(matchId, deck, player1, player2)
     for {
@@ -34,7 +32,7 @@ class MatchService[F[+_] : Applicative](
     EitherT.fromOptionF(repository.getMatch(matchId).pure[F], MatchNotFoundError)
   }
 
-  def withdraw(matchId: String, loserPlayer: User): EitherT[F, MatchNotFoundError.type, Match] = executeAction(matchId, MatchAction.Withdraw(loserPlayer))
+  def withdraw(matchId: String, loserPlayer: Long): EitherT[F, MatchNotFoundError.type, Match] = executeAction(matchId, MatchAction.Withdraw(loserPlayer))
 
   def executeAction(matchId: String, matchAction: MatchAction): EitherT[F, MatchNotFoundError.type, Match] = EitherT.fromEither {
     repository.getMatch(matchId).fold[Either[MatchNotFoundError.type, Match]](Left(MatchNotFoundError))(m => {
