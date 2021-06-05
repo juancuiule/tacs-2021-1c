@@ -64,8 +64,9 @@ object Server {
       auth = routeAuth
     )
 
+    val matchService = MatchService(matchRepo, validation = MatchValidation(matchRepo))
     val matchEndpoints = MatchEndpoints[F, HMACSHA256](
-      service = MatchService(matchRepo, validation = MatchValidation(matchRepo)),
+      service = matchService,
       userService,
       deckService,
       auth = routeAuth,
@@ -73,12 +74,14 @@ object Server {
       t
     )
 
+    val cardService = CardService(cardRepo, validation = CardValidation(cardRepo))
+
     for {
       client <- BlazeClientBuilder[F](global).stream.map(FollowRedirect(3)(_))
 
       cardEndpoints = CardEndpoints[F, HMACSHA256](
         repository = cardRepo,
-        cardService = CardService(cardRepo, validation = CardValidation(cardRepo)),
+        cardService = cardService,
         superHeroeService = SuperheroAPIService(client),
         auth = routeAuth
       )
@@ -92,8 +95,7 @@ object Server {
         "/superheros" -> CORS(superheroEndpoints, corsConfig),
         "/decks" -> CORS(deckEndpoints, corsConfig),
         "/users" -> CORS(userEndpoints, corsConfig),
-        "/matches" -> matchEndpoints, // , corsConfig),
-//        "/ws" -> x
+        "/matches" -> matchEndpoints
       ).orNotFound
 
       exitCode <- BlazeServerBuilder[F](global)

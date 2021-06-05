@@ -12,23 +12,22 @@ case class SocketMessage(
   payload: String,
   timestamp: Option[Long] = None
 ) {
+
   import SocketAction._
+
+  def _parse(): Either[circe.Error, MatchAction] = {
+    action match {
+      case Withdraw => getAction[MatchAction.Withdraw](payload)
+      case Battle => getAction[MatchAction.Battle](payload)
+      case Unknown => Right(MatchAction.NoOp)
+    }
+  }
 
   def getAction[T <: MatchAction](payload: String)(implicit D: Decoder[T]): Either[circe.Error, T] = {
     (for {
       json <- parse(payload)
       action <- json.as[T]
     } yield action)
-  }
-
-
-  def _parse(): Either[circe.Error, MatchAction] = {
-    action match {
-      case Withdraw => getAction[MatchAction.Withdraw](payload)
-      case DealCards => Right(MatchAction.DealCards)
-      case Battle => getAction[MatchAction.Battle](payload)
-      case Unknown => Right(MatchAction.NoOp)
-    }
   }
 }
 
@@ -57,12 +56,12 @@ object SocketAction {
   def from(in: String): SocketAction = in match {
     case "withdraw" => Withdraw
     case "battle" => Battle
-    case "dealCards" => DealCards
     case _ => Unknown
   }
 
   case object Unknown extends SocketAction
+
   case object Withdraw extends SocketAction
+
   case object Battle extends SocketAction
-  case object DealCards extends SocketAction
 }

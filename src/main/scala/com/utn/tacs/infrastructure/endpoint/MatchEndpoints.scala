@@ -1,7 +1,9 @@
 package com.utn.tacs.infrastructure.endpoint
 
-import cats.data.EitherT
+import cats.data.{EitherT, OptionT}
+import com.utn.tacs.domain.`match`.MatchAction.{Battle, Withdraw}
 import com.utn.tacs.domain.`match`.SocketMessage
+import org.http4s.Response
 //import com.utn.tacs.{FromClient, ToClient}
 import fs2.Pipe
 import org.http4s.websocket.WebSocketFrame.Text
@@ -47,16 +49,27 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
       }
     }
   }
+
   private val connectToMatchRoom = HttpRoutes.of[F] {
-    case GET -> Root / matchId / "room" => {
-      val _ = matchId
-      case class State(messageCount: Int)
-      for {
-        wsResponse <- WebSocketBuilder[F].build(
-          t.subscribe(10).drop(1) merge q.dequeue,
-          handleFrame(t, q)
-        )
-      } yield (wsResponse)
+    case r@GET -> Root / matchId / "room" :? TokenQueryParamMatcher(accessToken) => {
+      // Pone el token como header de la request
+      // hacemos esto porque la API de sockets de js no manda headers
+      val x: OptionT[F, User] = auth.authenticator.extractAndValidate(r.putHeaders(buildBearerAuthHeader(accessToken))).map(_.identity)
+
+      x.value.flatMap {
+        case Some(user) => {
+          // TODO: usar matchId y user
+          println(user.asJson)
+          println(matchId)
+          for {
+            wsResponse <- WebSocketBuilder[F].build(
+              t.subscribe(10).drop(1) merge q.dequeue,
+              handleFrame(t, q)
+            )
+          } yield (wsResponse)
+        }
+        case None => Response[F](status = Unauthorized).pure[F]
+      }
     }
   }
   private val createMatchEndpoint: AuthEndpoint[F, Auth] = {
@@ -76,17 +89,6 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
         case Left(MatchAlreadyExistsError) => InternalServerError()
       }
   }
-//  private val withdrawMatchEndpoint: AuthEndpoint[F, Auth] = {
-//    case req@PUT -> Root / matchId / "withdraw" asAuthed _ =>
-//      val loserPlayer = req.identity
-//      val action: F[Either[MatchNotFoundError.type, Match]] = for {
-//        result <- service.withdraw(matchId, loserPlayer.id).value
-//      } yield result
-//      action.flatMap {
-//        case Left(MatchNotFoundError) => NotFound()
-//        case Right(m) => Accepted(m.asJson)
-//      }
-//  }
   private val getMatchReplayEndpoint: AuthEndpoint[F, Auth] = {
     case GET -> Root / matchId / "replay" asAuthed _ =>
       service.getPlayedRounds(matchId) match {
@@ -95,20 +97,18 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
       }
   }
 
-  implicit val createMatchDecoder: EntityDecoder[F, CreateMatchDTO] = jsonOf
-
   def endpoints(): HttpRoutes[F] = {
     val authEndpoints = Auth.allRoles(
       getMatchByIdEndpoint
         .orElse(createMatchEndpoint)
-//        .orElse(withdrawMatchEndpoint)
         .orElse(getMatchReplayEndpoint)
+
     )
     connectToMatchRoom <+>
       auth.liftService(authEndpoints)
   }
 
-  implicit val withdrawMatchDecoder: EntityDecoder[F, WithdrawMatchDto] = jsonOf
+  implicit val createMatchDecoder: EntityDecoder[F, CreateMatchDTO] = jsonOf
 
   def handleFrame(topic: Topic[F, WebSocketFrame], msgQueue: Queue[F, WebSocketFrame]): Pipe[F, WebSocketFrame, Unit] = _.evalMap {
     case Text(text, _) =>
@@ -121,16 +121,22 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
           message._parse() match {
             case Left(e2) => msgQueue.enqueue1(Text(e2.toString))
             case Right(matchAction) => {
-              val action = for {
-                result <- service.executeAction(message.matchId, matchAction).value
-              } yield result
-              action.flatMap {
+
+              val action: EitherT[F, MatchNotFoundError.type, Match] = for {
+                theMatch <- service.getMatch(message.matchId)
+                updated <- (matchAction match {
+                  case Battle(cardAttribute) => service.battleByAttribute(cardAttribute)
+                  case Withdraw(loser) => service.withdraw(loser)
+                  case _ => service.noop
+                }) (theMatch)
+              } yield (updated)
+              action.value.flatMap {
                 case Left(MatchNotFoundError) => msgQueue.enqueue1(Text("match not found"))
                 case Right(newMatch) => (topic.publish1 _ compose transformMessage compose stampMessage) (SocketMessage(
                   newMatch.matchId,
                   message.author,
                   message.action,
-                  payload = newMatch.currentState.asJson.toString(),
+                  payload = newMatch.currentState.asJson.toString()
                 ))
               }
             }
@@ -140,6 +146,8 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
       msgQueue.enqueue1(Text(s"Cannot handle the frame ${frame.opcode}"))
   }
 
+  implicit val withdrawMatchDecoder: EntityDecoder[F, WithdrawMatchDto] = jsonOf
+
   def stampMessage(msg: SocketMessage): SocketMessage = msg.copy(timestamp = Some(Instant.now.toEpochMilli))
 
   def transformMessage(msg: SocketMessage): WebSocketFrame = Text(msg.asJson.noSpaces)
@@ -147,6 +155,8 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
   case class CreateMatchDTO(player1: String, player2: String, deckId: Int)
 
   case class WithdrawMatchDto(loserPlayer: String)
+
+  object TokenQueryParamMatcher extends QueryParamDecoderMatcher[String]("access-token")
 }
 
 object MatchEndpoints {
