@@ -51,28 +51,34 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
   }
 
   private val connectToMatchRoom = HttpRoutes.of[F] {
-    case r@GET -> Root / matchId / "room" :? TokenQueryParamMatcher(accessToken) => {
+    case req@GET -> Root / matchId / "room" :? TokenQueryParamMatcher(accessToken) => {
       // Pone el token como header de la request
       // hacemos esto porque la API de sockets de js no manda headers
-      val x: OptionT[F, User] = auth.authenticator.extractAndValidate(r.putHeaders(buildBearerAuthHeader(accessToken))).map(_.identity)
+      val userFromReq: OptionT[F, User] = auth.authenticator.extractAndValidate(req.putHeaders(buildBearerAuthHeader(accessToken))).map(_.identity)
 
-      x.value.flatMap {
+      userFromReq.value.flatMap {
         case Some(user) => {
-          // TODO: usar matchId y user
-          println(user.asJson)
-          println(matchId)
           for {
-            wsResponse <- WebSocketBuilder[F].build(
-              t.subscribe(10).drop(1) merge q.dequeue,
-              handleFrame(t, q)
-            )
-          } yield (wsResponse)
+            theMatch <- service.getMatch(matchId).value
+            resp <- theMatch match {
+              case Left(_) => Response[F](status = NotFound).pure[F]
+              case Right(m) if m.hasPlayer(user.id.get) => for {
+                wsResponse <- WebSocketBuilder[F].build(
+                  t.subscribe(10).drop(1) merge q.dequeue,
+                  handleFrame(t, q, user)
+                )
+              } yield wsResponse
+              case _ => Response[F](status = Unauthorized).pure[F]
+            }
+          } yield resp
         }
         case None => Response[F](status = Unauthorized).pure[F]
       }
     }
   }
+
   private val createMatchEndpoint: AuthEndpoint[F, Auth] = {
+    // TODO: validar que no este jugando partida contra él mismo
     case req@POST -> Root asAuthed _ =>
       val action: F[Either[MatchAlreadyExistsError.type, Match]] = for {
         post <- req.request.as[CreateMatchDTO]
@@ -89,6 +95,7 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
         case Left(MatchAlreadyExistsError) => InternalServerError()
       }
   }
+
   private val getMatchReplayEndpoint: AuthEndpoint[F, Auth] = {
     case GET -> Root / matchId / "replay" asAuthed _ =>
       service.getPlayedRounds(matchId) match {
@@ -102,7 +109,6 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
       getMatchByIdEndpoint
         .orElse(createMatchEndpoint)
         .orElse(getMatchReplayEndpoint)
-
     )
     connectToMatchRoom <+>
       auth.liftService(authEndpoints)
@@ -110,22 +116,23 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
 
   implicit val createMatchDecoder: EntityDecoder[F, CreateMatchDTO] = jsonOf
 
-  def handleFrame(topic: Topic[F, WebSocketFrame], msgQueue: Queue[F, WebSocketFrame]): Pipe[F, WebSocketFrame, Unit] = _.evalMap {
+  def handleFrame(topic: Topic[F, WebSocketFrame], msgQueue: Queue[F, WebSocketFrame], p: User): Pipe[F, WebSocketFrame, Unit] = _.evalMap {
     case Text(text, _) =>
       (for {
         json <- parse(text)
         message <- json.as[SocketMessage]
       } yield message) match {
+        // TODO: mensaje de: error parseando mensaje
         case Left(e) => msgQueue.enqueue1(Text(e.toString))
         case Right(message) =>
-          message._parse() match {
+          message.parsePayload() match {
+            // TODO: mensaje de: error parseando payload
             case Left(e2) => msgQueue.enqueue1(Text(e2.toString))
             case Right(matchAction) => {
-
               val action: EitherT[F, MatchNotFoundError.type, Match] = for {
                 theMatch <- service.getMatch(message.matchId)
                 updated <- (matchAction match {
-                  case Battle(cardAttribute) => service.battleByAttribute(cardAttribute)
+                  case Battle(cardAttribute) if service.playerCanBattle(theMatch, p.id.get) => service.battleByAttribute(cardAttribute)
                   case Withdraw(loser) => service.withdraw(loser)
                   case _ => service.noop
                 }) (theMatch)
@@ -152,7 +159,7 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
 
   def transformMessage(msg: SocketMessage): WebSocketFrame = Text(msg.asJson.noSpaces)
 
-  case class CreateMatchDTO(player1: String, player2: String, deckId: Int)
+  case class CreateMatchDTO(player2: String, deckId: Int)
 
   case class WithdrawMatchDto(loserPlayer: String)
 

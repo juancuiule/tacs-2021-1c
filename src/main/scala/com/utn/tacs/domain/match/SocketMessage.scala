@@ -15,7 +15,7 @@ case class SocketMessage(
 
   import SocketAction._
 
-  def _parse(): Either[circe.Error, MatchAction] = {
+  def parsePayload(): Either[circe.Error, MatchAction] = {
     action match {
       case Withdraw => getAction[MatchAction.Withdraw](payload)
       case Battle => getAction[MatchAction.Battle](payload)

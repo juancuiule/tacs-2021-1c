@@ -21,16 +21,17 @@ sealed trait MatchState
 
 
 object MatchState {
-  case class BattleResult(cardsInDeck: List[Int], player1Cards: List[Int], player2Cards: List[Int])
+  case class BattleResult(cardsInDeck: List[Int], player1Cards: List[Int], player2Cards: List[Int], nextToPlay: Long)
     extends MatchState
 
-  case class PreBattle(cardsInDeck: List[Int], player1Cards: List[Int], player2Cards: List[Int], player1Card: Int, player2Card: Int)
+  case class PreBattle(cardsInDeck: List[Int], player1Cards: List[Int], player2Cards: List[Int], player1Card: Int, player2Card: Int, nextToPlay: Long)
     extends MatchState
 
   case class Finished(winner: Long)
     extends MatchState
 
-  case class Draw(cardsInDeck: List[Int], player1Cards: List[Int], player2Cards: List[Int]) extends MatchState
+  case class Draw(cardsInDeck: List[Int], player1Cards: List[Int], player2Cards: List[Int])
+    extends MatchState
 }
 
 
@@ -42,6 +43,10 @@ final case class Match(
   steps: List[MatchStep]
 ) {
   type MatchStep = (MatchAction, MatchState)
+
+  def hasPlayer(player: Long): Boolean = {
+    player1 == player || player2 == player
+  }
 
   def currentState: MatchState = {
     steps.last._2
