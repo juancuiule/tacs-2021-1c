@@ -60,7 +60,7 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
                 val toClient: Stream[F, WebSocketFrame.Text] =
                   t
                     .subscribe(10)
-                    .filter(_.forUser(user.id.get))
+                    .filter(_.forUser(user.id.get, m.matchId))
                     .map(msg => Text(msg.toString))
 
                 def processInput(wsfStream: Stream[F, WebSocketFrame]): Stream[F, Unit] = {
