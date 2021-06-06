@@ -65,6 +65,12 @@ class MatchService[F[+_] : Applicative](
 
   def noop: ActionMethod = excecute(MatchAction.NoOp)
 
+  def getPlayedRounds(matchId: String): Option[List[MatchStep]] = {
+    repository.getMatchRounds(matchId)
+  }
+
+  def withdraw(loserPlayer: Long): ActionMethod = excecute(MatchAction.Withdraw(loserPlayer))
+
   def excecute(matchAction: MatchAction): Match => EitherT[F, MatchNotFoundError.type, Match] = (aMatch: Match) => {
     val newMatch = play(aMatch, matchAction)
     val updated = repository.updateMatch(newMatch)
@@ -77,10 +83,13 @@ class MatchService[F[+_] : Applicative](
   }
 
   def play(aMatch: Match, action: MatchAction): Match = {
-    aMatch.copy(steps = {
-      val nextState = nextStateFromAction(aMatch, action)
-      aMatch.steps :+ ((action, nextState))
-    })
+    action match {
+      case NoOp => aMatch
+      case _ => aMatch.copy(steps = {
+        val nextState = nextStateFromAction(aMatch, action)
+        aMatch.steps :+ ((action, nextState))
+      })
+    }
   }
 
   def nextStateFromAction(aMatch: Match, action: MatchAction): MatchState = {
@@ -120,12 +129,6 @@ class MatchService[F[+_] : Applicative](
       case _ => prevState
     }
   }
-
-  def getPlayedRounds(matchId: String): Option[List[MatchStep]] = {
-    repository.getMatchRounds(matchId)
-  }
-
-  def withdraw(loserPlayer: Long): ActionMethod = excecute(MatchAction.Withdraw(loserPlayer))
 
   def battleByAttribute(attribute: String)(implicit M: Monad[F]): ActionMethod = excecute(MatchAction.Battle(attribute)) andThen (_.flatMap(dealCards))
 }

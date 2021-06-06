@@ -143,7 +143,7 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
                   newMatch.matchId,
                   message.author,
                   message.action,
-                  payload = newMatch.currentState.asJson.toString()
+                  payload = newMatch.asJson.noSpaces // .currentState.asJson.toString()
                 ))
               }
             }

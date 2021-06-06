@@ -4,10 +4,6 @@ import cats.effect.{ExitCode, IO, IOApp}
 import fs2.concurrent.{Queue, Topic}
 import org.http4s.websocket.WebSocketFrame
 
-case class State(messageCount: Int)
-
-
-case class ToClient(message: String)
 
 object Main extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {

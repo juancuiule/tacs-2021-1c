@@ -19,7 +19,7 @@ case class SocketMessage(
     action match {
       case Withdraw => getAction[MatchAction.Withdraw](payload)
       case Battle => getAction[MatchAction.Battle](payload)
-      case Unknown => Right(MatchAction.NoOp)
+      case Unknown | GetMatch => Right(MatchAction.NoOp)
     }
   }
 
@@ -56,10 +56,12 @@ object SocketAction {
   def from(in: String): SocketAction = in match {
     case "withdraw" => Withdraw
     case "battle" => Battle
+    case "get" => GetMatch
     case _ => Unknown
   }
 
   case object Unknown extends SocketAction
+  case object GetMatch extends SocketAction
 
   case object Withdraw extends SocketAction
 
