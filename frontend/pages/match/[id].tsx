@@ -1,6 +1,5 @@
 import { useRouter } from "next/router";
 import React, { useEffect, useRef, useState } from "react";
-import { useAuth } from "../../src/contexts/AuthContext";
 
 export default function Match() {
   const router = useRouter();
@@ -15,13 +14,10 @@ export default function Match() {
     ws.current = new WebSocket(url);
     ws.current.onopen = (evt) => {
       console.log("Connection established");
-      console.log(evt)
+      console.log(evt);
       ws.current.send(
         JSON.stringify({
-          matchId: id,
-          author: "Juan", // por ahora no hace nada
-          action: "get",
-          payload: JSON.stringify({}),
+          action: "getMatch",
         })
       );
     };
@@ -32,8 +28,7 @@ export default function Match() {
 
     ws.current.onmessage = (evt) => {
       if (evt.data !== "") {
-        const d = JSON.parse(evt.data)
-        d.payload = JSON.parse(d.payload)
+        const d = JSON.parse(evt.data);
         setMatchState(d);
       }
     };
@@ -59,7 +54,6 @@ export default function Match() {
         }}
       >
         <pre>
-          {/* <code>{JSON.stringify(JSON.parse(matchState).payload, null, 2)}</code> */}
           <code>{JSON.stringify(matchState, null, 2)}</code>
         </pre>
         {ws.current && (
@@ -68,11 +62,9 @@ export default function Match() {
               onClick={() => {
                 ws.current.send(
                   JSON.stringify({
-                    matchId: id,
-                    author: "Juan", // por ahora no hace nada
                     action: "battle",
                     payload: JSON.stringify({
-                      cardAttribute: "height", // id
+                      key: "height", // id
                     }),
                   })
                 );

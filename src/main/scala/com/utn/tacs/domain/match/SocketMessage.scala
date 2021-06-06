@@ -34,9 +34,7 @@ case class SocketMessage(
 object SocketMessage {
   implicit val encoder: Encoder[SocketMessage] = Encoder.instance[SocketMessage](m => Json.obj(
     "action" -> Json.fromString(m.action.toString),
-    "author" -> Json.fromString(m.author),
     "payload" -> Json.fromString(m.payload),
-    "timestamp" -> Json.fromLong(m.timestamp.getOrElse(0))
   ))
 
   implicit val decoder: Decoder[SocketMessage] = Decoder.instance[SocketMessage](hc =>

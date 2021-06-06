@@ -44,6 +44,8 @@ final case class Match(
 ) {
   type MatchStep = (MatchAction, MatchState)
 
+  def players = Set(player1, player2)
+
   def hasPlayer(player: Long): Boolean = {
     player1 == player || player2 == player
   }

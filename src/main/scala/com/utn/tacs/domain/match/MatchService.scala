@@ -20,7 +20,7 @@ case object MatchAlreadyExistsError extends MatchError
 class MatchService[F[+_] : Applicative](
   repository: MatchRepository,
   validation: MatchValidation[F]
-) {
+)(implicit M: Monad[F]) {
   type ActionMethod = Match => EitherT[F, MatchNotFoundError.type, Match]
 
   def createMatch(player1: Long, player2: Long, deck: Int)(implicit M: Monad[F]): EitherT[F, MatchAlreadyExistsError.type, Match] = {
@@ -71,7 +71,7 @@ class MatchService[F[+_] : Applicative](
 
   def withdraw(loserPlayer: Long): ActionMethod = excecute(MatchAction.Withdraw(loserPlayer))
 
-  def excecute(matchAction: MatchAction): Match => EitherT[F, MatchNotFoundError.type, Match] = (aMatch: Match) => {
+  def excecute(matchAction: MatchAction)(implicit M: Monad[F]): Match => EitherT[F, MatchNotFoundError.type, Match] = (aMatch: Match) => {
     val newMatch = play(aMatch, matchAction)
     val updated = repository.updateMatch(newMatch)
     EitherT.fromEither {
@@ -130,10 +130,10 @@ class MatchService[F[+_] : Applicative](
     }
   }
 
-  def battleByAttribute(attribute: String)(implicit M: Monad[F]): ActionMethod = excecute(MatchAction.Battle(attribute)) andThen (_.flatMap(dealCards))
+  def battleByAttribute(attribute: String): ActionMethod = excecute(MatchAction.Battle(attribute)) andThen (_.flatMap(dealCards))
 }
 
 object MatchService {
-  def apply[F[+_] : Applicative](repository: MatchRepository, validation: MatchValidation[F]) =
+  def apply[F[+_] : Applicative](repository: MatchRepository, validation: MatchValidation[F])(implicit M: Monad[F]) =
     new MatchService[F](repository, validation)
 }
