@@ -85,9 +85,9 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
         result <- (player2, deck) match {
           case (Right(user2), Some(_deck)) =>
             if (user2.id.contains(player1.id.get))
-              service.createMatch(player1.id.get, user2.id.get, _deck.id).value
-            else
               ??? // player1 == player2 no se puede jugar
+            else
+              service.createMatch(player1.id.get, user2.id.get, _deck.id).value
           case (Right(_), None) => ??? // no existe ese deck
           case (Left(UserNotFoundError), _) => ??? // no existe este otro usuario
           case _ => Left(MatchAlreadyExistsError).pure[F]

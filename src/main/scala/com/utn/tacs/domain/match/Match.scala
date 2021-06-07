@@ -17,17 +17,23 @@ object MatchAction {
   case object DealCards extends MatchAction
 }
 
-sealed trait MatchState
+sealed trait MatchState {
+  val cardsInDeck: List[Int]
+  val player1Cards: List[Int]
+  val player2Cards: List[Int]
+}
 
 
 object MatchState {
+  def unapply(state: MatchState): Option[(List[Int], List[Int], List[Int])] = Some((state.cardsInDeck, state.player1Cards, state.player2Cards))
+
   case class BattleResult(cardsInDeck: List[Int], player1Cards: List[Int], player2Cards: List[Int], nextToPlay: Long)
     extends MatchState
 
   case class PreBattle(cardsInDeck: List[Int], player1Cards: List[Int], player2Cards: List[Int], player1Card: Int, player2Card: Int, nextToPlay: Long)
     extends MatchState
 
-  case class Finished(winner: Long)
+  case class Finished(cardsInDeck: List[Int], player1Cards: List[Int], player2Cards: List[Int], winner: Long)
     extends MatchState
 
   case class Draw(cardsInDeck: List[Int], player1Cards: List[Int], player2Cards: List[Int])

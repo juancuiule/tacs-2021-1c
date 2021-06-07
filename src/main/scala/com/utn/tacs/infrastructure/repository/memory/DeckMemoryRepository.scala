@@ -10,7 +10,7 @@ import scala.collection.concurrent.TrieMap
 class DeckMemoryRepository[F[_] : Applicative] extends DeckRepository[F] {
   private val cache = new TrieMap[Int, Deck]()
 
-  cache.addOne((1, Deck(1, "spiderdeck", Set(625, 578))))
+  cache.addOne((1, Deck(1, "spiderdeck", Set(625, 578, 500, 625, 578, 500, 625, 578, 500, 625, 578, 500))))
 
   def create(deck: Deck): F[Deck] = {
     (cache addOne (deck.id -> deck))

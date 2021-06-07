@@ -30,6 +30,17 @@ class CardMemoryRepository extends CardRepository {
     )
   ))
 
+  cache.addOne((
+    500,
+    Card(
+      500,
+      "Scarlet Spider 500",
+      Stats(193, 113, 88, 60, 37, 56, 55),
+      "https://www.superherodb.com/pictures2/portraits/10/100/1536.jpg",
+      Biography("Kaine Parker", "Marvel Comics")
+    )
+  ))
+
   def create(card: Card): Card = {
     cache addOne (card.id -> card)
     card

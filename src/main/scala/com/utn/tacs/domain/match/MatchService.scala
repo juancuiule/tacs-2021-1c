@@ -5,6 +5,7 @@ import cats.implicits.catsSyntaxApplicativeId
 import cats.{Applicative, Monad}
 import com.utn.tacs.domain.`match`.Match.MatchStep
 import com.utn.tacs.domain.`match`.MatchAction._
+import com.utn.tacs.domain.`match`.MatchState
 import com.utn.tacs.domain.`match`.MatchState.{BattleResult, Draw, Finished, PreBattle}
 
 import scala.util.Random
@@ -50,7 +51,7 @@ class MatchService[F[+_] : Applicative](
   private def initMatch: ActionMethod = m => {
     EitherT.fromEither {
       Right(m.copy(steps = List(
-        (InitMatch, BattleResult(List(1, 2, 3, 4, 5), List(), List(), m.player1))
+        (InitMatch, BattleResult(List(625, 578, 500, 625, 578, 500, 625, 578, 500, 625, 578, 500), List(), List(), m.player1))
       )))
     }
   }
@@ -97,9 +98,9 @@ class MatchService[F[+_] : Applicative](
       // TODO: poner cartas del mazo
       case (_: Finished, _) | (_: Draw, _) => prevState
       case (_, NoOp) => prevState
-      case (_, Withdraw(loser)) =>
+      case (MatchState(cardsInDeck, player1Cards, player2Cards), Withdraw(loser)) =>
         val winner = if (loser.equals(aMatch.player1)) aMatch.player2 else aMatch.player1
-        Finished(winner)
+        Finished(cardsInDeck, player1Cards, player2Cards, winner)
       case (PreBattle(cardsInDeck, player1Cards, player2Cards, card1, card2, nextToPlay), Battle(_)) =>
         val next = if (nextToPlay == aMatch.player1) aMatch.player2 else aMatch.player1
         BattleResult(cardsInDeck, player1Cards :+ card1 :+ card2, player2Cards, next)
@@ -113,9 +114,9 @@ class MatchService[F[+_] : Applicative](
       case (BattleResult(cards, cards1, cards2, nextToPlay), DealCards) => cards.length match {
         case 0 | 1 =>
           if (cards1.length > cards2.length)
-            Finished(aMatch.player1)
+            Finished(cards, cards1, cards2, aMatch.player1)
           else if (cards2.length > cards1.length)
-            Finished(aMatch.player2)
+            Finished(cards, cards1, cards2, aMatch.player2)
           else
             Draw(cards, cards1, cards2)
         case _ =>
