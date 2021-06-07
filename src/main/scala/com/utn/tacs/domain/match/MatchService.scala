@@ -23,9 +23,8 @@ class MatchService[F[+_] : Applicative](
 )(implicit M: Monad[F]) {
   type ActionMethod = Match => EitherT[F, MatchNotFoundError.type, Match]
 
-  def createMatch(player1: Long, player2: Long, deck: Int)(implicit M: Monad[F]): EitherT[F, MatchAlreadyExistsError.type, Match] = {
+  def createMatch(player1: Long, player2: Long, deck: Int): EitherT[F, MatchAlreadyExistsError.type, Match] = {
     val matchId = Random.alphanumeric.take(15).mkString("")
-    println(matchId)
     val newMatch = Match(matchId, deck, player1, player2)
     for {
       _ <- validation.doesNotExist(newMatch)
@@ -34,12 +33,12 @@ class MatchService[F[+_] : Applicative](
     } yield initializedMatch
   }
 
-  def start(matchId: String)(implicit M: Monad[F]): EitherT[F, MatchNotFoundError.type, Match] = {
+  private def start(matchId: String): EitherT[F, MatchNotFoundError.type, Match] = {
     for {
       matchInRepo <- getMatch(matchId)
       initializedMatch <- initMatch(matchInRepo)
       matchWithDeckCards <- dealCards(initializedMatch)
-    } yield (matchWithDeckCards)
+    } yield matchWithDeckCards
   }
 
   def getMatch(matchId: String): EitherT[F, MatchNotFoundError.type, Match] = {
@@ -48,7 +47,7 @@ class MatchService[F[+_] : Applicative](
 
   def dealCards: ActionMethod = excecute(MatchAction.DealCards)
 
-  def initMatch: ActionMethod = m => {
+  private def initMatch: ActionMethod = m => {
     EitherT.fromEither {
       Right(m.copy(steps = List(
         (InitMatch, BattleResult(List(1, 2, 3, 4, 5), List(), List(), m.player1))
@@ -71,7 +70,7 @@ class MatchService[F[+_] : Applicative](
 
   def withdraw(loserPlayer: Long): ActionMethod = excecute(MatchAction.Withdraw(loserPlayer))
 
-  def excecute(matchAction: MatchAction)(implicit M: Monad[F]): Match => EitherT[F, MatchNotFoundError.type, Match] = (aMatch: Match) => {
+  private def excecute(matchAction: MatchAction): Match => EitherT[F, MatchNotFoundError.type, Match] = (aMatch: Match) => {
     val newMatch = play(aMatch, matchAction)
     val updated = repository.updateMatch(newMatch)
     EitherT.fromEither {
@@ -82,7 +81,7 @@ class MatchService[F[+_] : Applicative](
     }
   }
 
-  def play(aMatch: Match, action: MatchAction): Match = {
+  private def play(aMatch: Match, action: MatchAction): Match = {
     action match {
       case NoOp => aMatch
       case _ => aMatch.copy(steps = {
@@ -92,7 +91,7 @@ class MatchService[F[+_] : Applicative](
     }
   }
 
-  def nextStateFromAction(aMatch: Match, action: MatchAction): MatchState = {
+  private def nextStateFromAction(aMatch: Match, action: MatchAction): MatchState = {
     val (_, prevState) = aMatch.steps.last
     (prevState, action) match {
       // TODO: poner cartas del mazo
@@ -111,20 +110,18 @@ class MatchService[F[+_] : Applicative](
       //        } else {
       //          BattleResult(cardsInDeck, player1Cards :+ card1, player2Cards :+ card2)
       //        }
-      case (BattleResult(cards, cards1, cards2, nextToPlay), DealCards) => {
-        cards.length match {
-          case 0 | 1 =>
-            if (cards1.length > cards2.length)
-              Finished(aMatch.player1)
-            else if (cards2.length > cards1.length)
-              Finished(aMatch.player2)
-            else
-              Draw(cards, cards1, cards2)
-          case _ =>
-            val toDeal = cards.take(2)
-            val toDeck = cards.drop(2)
-            PreBattle(toDeck, cards1, cards2, toDeal.head, toDeal.last, nextToPlay)
-        }
+      case (BattleResult(cards, cards1, cards2, nextToPlay), DealCards) => cards.length match {
+        case 0 | 1 =>
+          if (cards1.length > cards2.length)
+            Finished(aMatch.player1)
+          else if (cards2.length > cards1.length)
+            Finished(aMatch.player2)
+          else
+            Draw(cards, cards1, cards2)
+        case _ =>
+          val toDeal = cards.take(2)
+          val toDeck = cards.drop(2)
+          PreBattle(toDeck, cards1, cards2, toDeal.head, toDeal.last, nextToPlay)
       }
       case _ => prevState
     }

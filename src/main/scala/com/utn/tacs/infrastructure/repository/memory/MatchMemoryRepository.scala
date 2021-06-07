@@ -8,7 +8,6 @@ import scala.collection.concurrent.TrieMap
 class MatchMemoryRepository extends MatchRepository {
 
   private val matchDB = new TrieMap[String, Match]()
-  private val roundsDB = new TrieMap[String, List[MatchStep]]()
 
   def getMatch(matchId: String): Option[Match] = matchDB.get(matchId)
 
@@ -23,7 +22,7 @@ class MatchMemoryRepository extends MatchRepository {
   }
 
   def getMatchRounds(matchId: String): Option[List[MatchStep]] = {
-    roundsDB.get(matchId)
+    matchDB.get(matchId).map(_.steps)
   }
 }
 

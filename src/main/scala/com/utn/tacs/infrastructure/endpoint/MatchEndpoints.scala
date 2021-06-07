@@ -6,7 +6,7 @@ import cats.syntax.all._
 import com.utn.tacs.domain.`match`.{InputMessage, Match, MatchAlreadyExistsError, MatchNotFoundError, MatchService, OutputMessage, _}
 import com.utn.tacs.domain.auth.Auth
 import com.utn.tacs.domain.deck.DeckService
-import com.utn.tacs.domain.user.{User, UserService}
+import com.utn.tacs.domain.user.{User, UserNotFoundError, UserService}
 import fs2.concurrent.Topic
 import fs2.{Pipe, Stream}
 import io.circe.Json
@@ -21,6 +21,8 @@ import org.http4s.{EntityDecoder, HttpRoutes, Response}
 import tsec.authentication.{AugmentedJWT, SecuredRequestHandler, _}
 import tsec.jwt.algorithms.JWTMacAlgo
 
+import scala.util.Right
+
 class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
   service: MatchService[F],
   userService: UserService[F],
@@ -31,9 +33,6 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
 ) extends Http4sDsl[F] {
   implicit def decoder[T[_] : Sync]: EntityDecoder[T, Match] = jsonOf[T, Match]
 
-  //  print(q)
-
-
   private val getMatchByIdEndpoint: AuthEndpoint[F, Auth] = {
     case GET -> Root / matchId asAuthed _ => {
       val result: EitherT[F, MatchNotFoundError.type, Match] = service.getMatch(matchId)
@@ -43,7 +42,6 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
       }
     }
   }
-
   private val connectToMatchRoom = HttpRoutes.of[F] {
     case req@GET -> Root / matchId / "room" :? TokenQueryParamMatcher(accessToken) => {
       // Pone el token como header de la request
@@ -63,46 +61,9 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
                     .filter(_.forUser(user.id.get, m.matchId))
                     .map(msg => Text(msg.toString))
 
-                def processInput(wsfStream: Stream[F, WebSocketFrame]): Stream[F, Unit] = {
-                  val parsedSocketInput = {
-                    wsfStream.collect {
-                      case Text(text, _) => InputMessage._parse(text, user.id.get, m.matchId)
-                      case Close(_) => Disconnect(user.id.get, m.matchId)
-                    }.evalMap(im => {
-                      val action = for {
-                        currM <- service.getMatch(im.theMatch)
-                        updated <- im match {
-                          case GetMatch(_, _) => service.noop(currM)
-                          case Battle(user, _, key) if service.playerCanBattle(currM, user) => service.battleByAttribute(key)(currM)
-                          case Withdraw(user, _) => service.withdraw(user)(currM)
-                          case Disconnect(_, _) => service.noop(currM)
-                          case InvalidInput(_, _) => service.noop(currM)
-                          case _ => service.noop(currM)
-                        }
-                      } yield (updated)
-                      action.value.flatMap({
-                        case Left(MatchNotFoundError) => t.publish1(SendToUser(user.id.get, None))
-                        case Right(newMatch) => im match {
-                          case GetMatch(_, _) => t.publish1(SendToUser(user.id.get, newMatch.some))
-                          case Battle(_, _, _) => t.publish1(SendToUsers(newMatch.players, newMatch.some))
-                          case Withdraw(_, _) => t.publish1(SendToUsers(newMatch.players, newMatch.some))
-                          case Disconnect(_, _) => t.publish1(SendToUsers(newMatch.players, newMatch.some))
-                          case InvalidInput(_, _) => t.publish1(SendToUser(user.id.get, None))
-                          case _ => t.publish1(SendToUser(user.id.get, None))
-                        }
-                      })
-                    })
-                  }
-                  parsedSocketInput
-                }
-
-                val inputPipe: Pipe[F, WebSocketFrame, Unit] = processInput
-
+                val inputPipe: Pipe[F, WebSocketFrame, Unit] = processInput(user, m, t)
                 for {
-                  wsResponse <- WebSocketBuilder[F].build(
-                    toClient,
-                    inputPipe
-                  )
+                  wsResponse <- WebSocketBuilder[F].build(toClient, inputPipe)
                 } yield wsResponse
               }
               case _ => Response[F](status = Unauthorized).pure[F]
@@ -113,7 +74,6 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
       }
     }
   }
-
   private val createMatchEndpoint: AuthEndpoint[F, Auth] = {
     // TODO: validar que no este jugando partida contra él mismo
     case req@POST -> Root asAuthed _ =>
@@ -123,7 +83,13 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
         player2 <- userService.getUserByName(post.player2).value
         deck <- deckService.get(post.deckId).value
         result <- (player2, deck) match {
-          case (Right(user2), Some(_deck)) => service.createMatch(player1.id.get, user2.id.get, _deck.id).value
+          case (Right(user2), Some(_deck)) =>
+            if (user2.id.contains(player1.id.get))
+              service.createMatch(player1.id.get, user2.id.get, _deck.id).value
+            else
+              ??? // player1 == player2 no se puede jugar
+          case (Right(_), None) => ??? // no existe ese deck
+          case (Left(UserNotFoundError), _) => ??? // no existe este otro usuario
           case _ => Left(MatchAlreadyExistsError).pure[F]
         }
       } yield result
@@ -132,7 +98,6 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
         case Left(MatchAlreadyExistsError) => InternalServerError()
       }
   }
-
   private val getMatchReplayEndpoint: AuthEndpoint[F, Auth] = {
     case GET -> Root / matchId / "replay" asAuthed _ =>
       service.getPlayedRounds(matchId) match {
@@ -150,6 +115,37 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
     connectToMatchRoom <+>
       auth.liftService(authEndpoints)
   }
+
+  private def processInput(user: User, m: Match, t: Topic[F, OutputMessage])(wsfStream: Stream[F, WebSocketFrame]): Stream[F, Unit] = {
+    wsfStream.collect {
+      case Text(text, _) => InputMessage._parse(text, user.id.get, m.matchId)
+      case Close(_) => Disconnect(user.id.get, m.matchId)
+    }.evalMap(im => {
+      val action = for {
+        currM <- service.getMatch(im.theMatch)
+        updated <- im match {
+          case GetMatch(_, _) => service.noop(currM)
+          case Battle(user, _, key) if service.playerCanBattle(currM, user) => service.battleByAttribute(key)(currM)
+          case Withdraw(user, _) => service.withdraw(user)(currM)
+          case Disconnect(_, _) => service.noop(currM)
+          case InvalidInput(_, _) => service.noop(currM)
+          case _ => service.noop(currM)
+        }
+      } yield updated
+      action.value.flatMap({
+        case Left(MatchNotFoundError) => t.publish1(SendToUser(user.id.get, None))
+        case Right(newMatch) => im match {
+          case GetMatch(_, _) => t.publish1(SendToUser(user.id.get, newMatch.some))
+          case Battle(_, _, _) => t.publish1(SendToUsers(newMatch.players, newMatch.some))
+          case Withdraw(_, _) => t.publish1(SendToUsers(newMatch.players, newMatch.some))
+          case Disconnect(_, _) => t.publish1(SendToUsers(newMatch.players, newMatch.some))
+          case InvalidInput(_, _) => t.publish1(SendToUser(user.id.get, None))
+          case _ => t.publish1(SendToUser(user.id.get, None))
+        }
+      })
+    })
+  }
+
 
   implicit val createMatchDecoder: EntityDecoder[F, CreateMatchDTO] = jsonOf
 
