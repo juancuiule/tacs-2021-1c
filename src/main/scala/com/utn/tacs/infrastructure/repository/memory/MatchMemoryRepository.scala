@@ -16,6 +16,8 @@ class MatchMemoryRepository extends MatchRepository {
     newMatch
   }
 
+  def getAll: List[Match] = matchDB.values.toList
+
   def updateMatch(upMatch: Match): Option[Match] = {
     matchDB.replace(upMatch.matchId, upMatch)
     Some(upMatch)

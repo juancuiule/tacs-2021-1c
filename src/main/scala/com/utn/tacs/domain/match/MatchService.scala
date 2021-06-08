@@ -56,6 +56,12 @@ class MatchService[F[+_] : Applicative](
     }
   }
 
+  def getMatchesForPlayer(player: Long): List[Match] = {
+    repository.getAll.filter(_.hasPlayer(player))
+  }
+
+  def getMatches: List[Match] = repository.getAll
+
   def playerCanBattle(aMatch: Match, player: Long): Boolean = {
     aMatch.currentState match {
       case PreBattle(_, _, _, _, _, p) => p == player

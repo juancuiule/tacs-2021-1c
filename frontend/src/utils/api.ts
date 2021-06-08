@@ -67,6 +67,7 @@ type LoginData = {
 };
 
 type AuthResponse = {
+  id: string;
   userName: string;
   accessToken: string;
 };

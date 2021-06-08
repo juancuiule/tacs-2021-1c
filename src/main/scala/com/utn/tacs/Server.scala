@@ -26,8 +26,7 @@ import scala.concurrent.duration.DurationInt
 
 object Server {
   def createServer[F[+_] : ContextShift : ConcurrentEffect : Timer](
-//    q: Queue[F, InputMessage],
-    t: Topic[F, OutputMessage]
+    topic: Topic[F, OutputMessage]
   ): fs2.Stream[F, ExitCode] = {
     val corsConfig = CORSConfig(
       anyOrigin = false,
@@ -68,9 +67,13 @@ object Server {
       service = matchService,
       userService,
       deckService,
+      auth = routeAuth
+    )
+
+    val matchRoomEndpoints = MatchRoomEndpoints[F, HMACSHA256](
+      service = matchService,
       auth = routeAuth,
-//      q,
-      t
+      topic = topic
     )
 
     val cardService = CardService(cardRepo, validation = CardValidation(cardRepo))
@@ -94,7 +97,8 @@ object Server {
         "/superheros" -> CORS(superheroEndpoints, corsConfig),
         "/decks" -> CORS(deckEndpoints, corsConfig),
         "/users" -> CORS(userEndpoints, corsConfig),
-        "/matches" -> matchEndpoints
+        "/matches" -> CORS(matchEndpoints, corsConfig),
+        "/rooms" -> matchRoomEndpoints
       ).orNotFound
 
       exitCode <- BlazeServerBuilder[F](global)

@@ -4,6 +4,7 @@ import api from "../utils/api";
 export type AuthContextData = {
   auth: boolean;
   userName?: string;
+  id?: string;
   accessToken?: string;
   fetched: boolean;
 };
@@ -19,6 +20,7 @@ type Login = {
   type: "LOGIN";
   accessToken: string;
   userName: string;
+  id: string;
 };
 
 type Logout = {
@@ -39,12 +41,14 @@ function reducer(
     case "LOGIN": {
       localStorage.setItem("accessToken", action.accessToken);
       localStorage.setItem("userName", action.userName);
+      localStorage.setItem("id", action.id);
       return {
         ...state,
         auth: true,
         fetched: true,
         accessToken: action.accessToken,
         userName: action.userName,
+        id: action.id,
       };
     }
     case "FETCHED": {
@@ -56,11 +60,13 @@ function reducer(
     case "LOGOUT": {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("userName");
+      localStorage.removeItem("id");
       return {
         ...state,
         auth: false,
         accessToken: undefined,
         userName: undefined,
+        id: undefined,
         fetched: false,
       };
     }
@@ -88,11 +94,13 @@ export function useAuth() {
   useEffect(() => {
     const localStorageAccessToken = localStorage.getItem("accessToken");
     const localStorageUserName = localStorage.getItem("userName");
+    const localStorageId = localStorage.getItem("id");
     if (localStorageAccessToken !== null && localStorageUserName !== null) {
       dispatch({
         type: "LOGIN",
         accessToken: localStorageAccessToken,
         userName: localStorageUserName,
+        id: localStorageId,
       });
     } else {
       dispatch({ type: "FETCHED" });
@@ -100,7 +108,7 @@ export function useAuth() {
   }, []);
 
   const login = async (userName: string, password: string) => {
-    const { accessToken } = await api.login({
+    const { id, accessToken } = await api.login({
       userName,
       password,
     });
@@ -109,6 +117,7 @@ export function useAuth() {
       type: "LOGIN",
       accessToken,
       userName,
+      id,
     });
   };
 
@@ -117,7 +126,7 @@ export function useAuth() {
     password: string,
     role: "Admin" | "Player"
   ) => {
-    const { accessToken } = await api.signup({
+    const { id, accessToken } = await api.signup({
       userName,
       password,
       role,
@@ -126,6 +135,7 @@ export function useAuth() {
       type: "LOGIN",
       accessToken,
       userName,
+      id,
     });
   };
 
