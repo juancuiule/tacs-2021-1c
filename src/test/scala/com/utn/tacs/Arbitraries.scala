@@ -45,11 +45,25 @@ trait SuperAmigosArbitraries {
 
   implicit val card: Arbitrary[Card] = Arbitrary[Card] {
     for {
-//      id <- Gen.posNum[Int]
+      id <- Gen.posNum[Int]
       name <- deckNameGen
       url <- cardUrlGen
-      height <- Gen.option(Gen.posNum[Int])
-    } yield Card(10, name, stats = Stats(height.getOrElse(10), 10, 10, 10, 10, 10, 10), biography = Biography("a", "b"), image = url)
+      height <- Gen.posNum[Int]
+      weight <- Gen.posNum[Int]
+      intelligence <- Gen.posNum[Int]
+      speed <- Gen.posNum[Int]
+      power <- Gen.posNum[Int]
+      combat <- Gen.posNum[Int]
+      strength <- Gen.posNum[Int]
+    } yield Card(id, name, stats = Stats(
+      height,
+      weight,
+      intelligence,
+      speed,
+      power,
+      combat,
+      strength
+    ), biography = Biography("a", "b"), image = url)
   }
 
   implicit val deck: Arbitrary[Deck] = Arbitrary[Deck] {

@@ -2,11 +2,17 @@ package com.utn.tacs.domain.deck
 
 
 import cats.{Applicative, Monad}
-import cats.data.OptionT
+import cats.data.{EitherT, OptionT}
+
+trait DeckError
+
+case object DeckAlreadyExists extends DeckError
 
 class DeckService[F[+_] : Applicative](repository: DeckRepository[F])(implicit M: Monad[F]) {
 
-  def create(deck: Deck): F[Deck] = repository.create(deck)
+  def create(deck: Deck): EitherT[F, DeckAlreadyExists.type, Deck] = {
+    EitherT.liftF(repository.create(deck))
+  }
 
   def getAll(pageSize: Int, offset: Int): F[List[Deck]] =
     repository.list(pageSize, offset)

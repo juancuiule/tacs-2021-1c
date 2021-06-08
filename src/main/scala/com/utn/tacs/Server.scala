@@ -62,7 +62,9 @@ object Server {
       auth = routeAuth
     )
 
-    val matchService = MatchService(matchRepo, validation = MatchValidation(matchRepo), deckService)
+    val cardService = CardService(cardRepo, validation = CardValidation(cardRepo))
+
+    val matchService = MatchService(matchRepo, validation = MatchValidation(matchRepo), deckService, cardService)
     val matchEndpoints = MatchEndpoints[F, HMACSHA256](
       service = matchService,
       userService,
@@ -76,7 +78,6 @@ object Server {
       topic = topic
     )
 
-    val cardService = CardService(cardRepo, validation = CardValidation(cardRepo))
 
     for {
       client <- BlazeClientBuilder[F](global).stream.map(FollowRedirect(3)(_))

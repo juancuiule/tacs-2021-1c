@@ -1,9 +1,12 @@
+import { FormControl, InputLabel, MenuItem, Select } from "@material-ui/core";
+import { Formik } from "formik";
 import { useRouter } from "next/router";
 import React, { useEffect, useRef, useState } from "react";
+import Button from "../../src/components/Button";
+import HeroCard from "../../src/components/HeroCard";
 import { useAuth } from "../../src/contexts/AuthContext";
 import api from "../../src/utils/api";
-import { parseMatchState } from "../../src/utils/utils";
-import { Hero, MatchData, MatchState } from "../../types";
+import { Hero, MatchData } from "../../types";
 
 export default function Match() {
   const router = useRouter();
@@ -87,22 +90,59 @@ export default function Match() {
         matchState !== null &&
         state.type !== "finished" &&
         state.type !== "draw" &&
-        state.nextToPlay == userId && (
+        state.nextToPlay == userId &&
+        card && (
           <>
-            <button
-              onClick={() => {
+            <Formik
+              initialValues={{
+                key: "height",
+              }}
+              onSubmit={async ({ key }) => {
                 ws.current.send(
                   JSON.stringify({
                     action: "battle",
                     payload: JSON.stringify({
-                      key: "height",
+                      key,
                     }),
                   })
                 );
               }}
             >
-              Pelear
-            </button>
+              {({ values, handleSubmit, setFieldValue }) => (
+                <form onSubmit={handleSubmit} id="battle-form">
+                  <FormControl>
+                    <InputLabel id="key-select-label">Atributo</InputLabel>
+                    <Select
+                      labelId="key-select-label"
+                      id="key"
+                      value={values.key}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setFieldValue("key", value);
+                      }}
+                    >
+                      {Object.keys(card.stats).map((key) => (
+                        <MenuItem value={key}>{key}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <button type="submit" form="battle-form">
+                    Pelear
+                  </button>
+                  <button
+                    onClick={() => {
+                      ws.current.send(
+                        JSON.stringify({
+                          action: "withdraw",
+                        })
+                      );
+                    }}
+                  >
+                    Abandonar
+                  </button>
+                </form>
+              )}
+            </Formik>
           </>
         )}
       {matchState !== null && (
@@ -119,17 +159,16 @@ export default function Match() {
           {state.type !== "finished" && state.type !== "draw" ? (
             <>
               <div>
-                {state.type === "preBattle" && card && (
-                  <div>
-                    <img src={card.image} width="100px" height="100px" />
-                  </div>
-                )}
-                <div>Cartas L: {state.player1Cards} </div>
+                {state.type === "preBattle" && card && <HeroCard hero={card} />}
               </div>
-              <div>Cartas Deck: {state.cardsInDeck} </div>
               <div>
-                <div style={{ width: "100px" }}></div>
-                <div>Cartas V: {state.player2Cards} </div>
+                <div>
+                  Cartas Local ({player1}): {state.player1Cards}{" "}
+                </div>
+                <div>Cartas Deck: {state.cardsInDeck} </div>
+                <div>
+                  Cartas Visitante ({player2}): {state.player2Cards}{" "}
+                </div>
               </div>
             </>
           ) : (

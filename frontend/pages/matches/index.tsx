@@ -2,7 +2,7 @@ import {
   Container,
   IconButton,
   Paper,
-  TableContainer
+  TableContainer,
 } from "@material-ui/core";
 import { makeStyles } from "@material-ui/core/styles";
 import Table from "@material-ui/core/Table";
@@ -45,16 +45,14 @@ export default function Decks() {
   useEffect(() => {
     if (accessToken) {
       const fetchMatches = async () => {
-        const res = await api.GET<{ matches: any[] }>(
-          "/matches",
-          accessToken
-        );
+        const res = await api.GET<{ matches: any[] }>("/matches", accessToken);
         const matches = res.matches.map((match) => {
           const { steps, ...d } = match;
           return {
             ...d,
             steps,
             state: parseMatchState(steps[steps.length - 1][1]),
+            currentStateType: Object.keys(steps[steps.length - 1][1])[0],
           };
         });
         setMatches(matches);
@@ -87,7 +85,8 @@ export default function Decks() {
             <TableHead>
               <TableRow>
                 <TableCell>Jugadores</TableCell>
-                <TableCell align="right">Cartas</TableCell>
+                <TableCell align="right">Estado</TableCell>
+                <TableCell align="right">Cartas restantes</TableCell>
                 {auth && fetched && <TableCell>Actions</TableCell>}
               </TableRow>
             </TableHead>
@@ -96,6 +95,9 @@ export default function Decks() {
                 <TableRow key={match.matchId}>
                   <TableCell component="th" scope="row">
                     {match.player1} vs. {match.player2}
+                  </TableCell>
+                  <TableCell component="th" scope="row">
+                    {match.currentStateType}
                   </TableCell>
                   <TableCell align="right">
                     {match.state.cardsInDeck.length}

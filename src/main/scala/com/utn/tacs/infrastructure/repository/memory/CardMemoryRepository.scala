@@ -1,45 +1,12 @@
 package com.utn.tacs.infrastructure.repository.memory
 
-import com.utn.tacs.domain.cards.{Biography, Card, CardRepository, Stats}
+import com.utn.tacs.domain.cards.{Card, CardRepository}
 
 import scala.collection.concurrent.TrieMap
 
 class CardMemoryRepository extends CardRepository {
 
   private val cache = new TrieMap[Int, Card]()
-
-  cache.addOne((
-    625,
-    Card(
-      625,
-      "Spider-Woman III",
-      Stats(173, 55, 50, 27, 60, 28, 48),
-      "https://www.superherodb.com/pictures2/portraits/10/100/482.jpg",
-      Biography("Martha Franklin", "Marvel Comics")
-    )
-  ))
-
-  cache.addOne((
-    578,
-    Card(
-      578,
-      "Scarlet Spider II",
-      Stats(193, 113, 88, 60, 37, 56, 55),
-      "https://www.superherodb.com/pictures2/portraits/10/100/1536.jpg",
-      Biography("Kaine Parker", "Marvel Comics")
-    )
-  ))
-
-  cache.addOne((
-    500,
-    Card(
-      500,
-      "Scarlet Spider 500",
-      Stats(193, 113, 88, 60, 37, 56, 55),
-      "https://www.superherodb.com/pictures2/portraits/10/100/1536.jpg",
-      Biography("Kaine Parker", "Marvel Comics")
-    )
-  ))
 
   def create(card: Card): Card = {
     cache addOne (card.id -> card)

@@ -37,10 +37,13 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
   }
 
   private val getUserMatches: AuthEndpoint[F, Auth] = {
-    case req@GET -> Root asAuthed _ =>
+    case req@GET -> Root asAuthed _ => {
       val player = req.identity
-      val matches = service.getMatchesForPlayer(player.id.get)
-      Ok(Json.obj(("matches", matches.asJson)))
+      for {
+        matches <- service.getMatchesForPlayer(player.id.get)
+        resp <- Ok(Json.obj(("matches", matches.asJson)))
+      } yield resp
+    }
   }
 
   private val createMatchEndpoint: AuthEndpoint[F, Auth] = {
@@ -69,10 +72,13 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
   }
   private val getMatchReplayEndpoint: AuthEndpoint[F, Auth] = {
     case GET -> Root / matchId / "replay" asAuthed _ =>
-      service.getPlayedRounds(matchId) match {
-        case Some(rounds) => Ok(Json.obj(("rounds", rounds.asJson)))
-        case None => NotFound()
-      }
+      for {
+        rounds <- service.getPlayedRounds(matchId).value
+        resp <- rounds match {
+          case Some(rounds) => Ok(Json.obj(("rounds", rounds.asJson)))
+          case None => NotFound()
+        }
+      } yield resp
   }
 
   def endpoints(): HttpRoutes[F] = {

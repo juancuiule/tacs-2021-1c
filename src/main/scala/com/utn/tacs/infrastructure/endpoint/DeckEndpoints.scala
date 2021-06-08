@@ -31,8 +31,11 @@ class DeckEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
       for {
         post <- req.request.as[CreateDeckDTO]
         newDeck = Deck(id = r.nextInt(100), cards = Set(), name = post.name)
-        c <- service.create(newDeck)
-        resp <- Created(c.asJson)
+        c <- service.create(newDeck).value
+        resp <- c match {
+          case Left(_) => InternalServerError()
+          case Right(value) => Created(value.asJson)
+        }
       } yield resp
   }
 

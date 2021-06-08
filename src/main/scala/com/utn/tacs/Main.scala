@@ -7,13 +7,8 @@ import fs2.concurrent.Topic
 object Main extends IOApp {
   def run(args: List[String]): IO[ExitCode] = {
     for {
-//      queue <- Queue.unbounded[IO, InputMessage];
       topic <- Topic[IO, OutputMessage](SendToUsers(Set.empty, None))
-
-      exitCode <- {
-        Server.createServer[IO](topic).compile.drain.as(ExitCode.Success)
-      }
-
+      exitCode <- Server.createServer[IO](topic).compile.drain.as(ExitCode.Success)
     } yield exitCode
   }
 }

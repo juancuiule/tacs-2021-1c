@@ -3,7 +3,7 @@ package com.utn.tacs.infrastructure.endpoint
 import cats.data.OptionT
 import cats.effect.{Concurrent, Sync, Timer}
 import cats.syntax.all._
-import com.utn.tacs.domain.`match`.{InputMessage, Match, MatchNotFoundError, MatchService, OutputMessage, _}
+import com.utn.tacs.domain.`match`.{InputMessage, Match, MatchService, OutputMessage, _}
 import com.utn.tacs.domain.user.User
 import fs2.concurrent.Topic
 import fs2.{Pipe, Stream}
@@ -76,7 +76,7 @@ class MatchRoomEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
         }
       } yield updated
       action.value.flatMap({
-        case Left(MatchNotFoundError) => t.publish1(SendToUser(user.id.get, None))
+        case Left(_) => t.publish1(SendToUser(user.id.get, None))
         case Right(newMatch) => im match {
           case GetMatch(_, _) => t.publish1(SendToUser(user.id.get, newMatch.some))
           case Battle(_, _, _) => t.publish1(SendToUsers(newMatch.players, newMatch.some))

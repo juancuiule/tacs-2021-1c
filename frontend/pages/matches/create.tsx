@@ -97,7 +97,11 @@ export default function CreateDeck() {
               setFieldValue,
               ...rest
             }) => (
-              <form onSubmit={handleSubmit} id="match-form" className={classes.loginContainer}>
+              <form
+                onSubmit={handleSubmit}
+                id="match-form"
+                className={classes.loginContainer}
+              >
                 <TextField
                   className={classes.formControl}
                   value={values.player}
@@ -135,7 +139,7 @@ export default function CreateDeck() {
                   type="submit"
                   form="match-form"
                   onClick={(e) => {
-                    console.log(e)
+                    console.log(e);
                   }}
                 />
               </form>

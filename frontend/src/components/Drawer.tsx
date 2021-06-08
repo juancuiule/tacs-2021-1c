@@ -1,36 +1,35 @@
-import React from "react";
-import clsx from "clsx";
-import {
-  makeStyles,
-  useTheme,
-  Theme,
-  createStyles,
-} from "@material-ui/core/styles";
-import Drawer from "@material-ui/core/Drawer";
-import CssBaseline from "@material-ui/core/CssBaseline";
 import AppBar from "@material-ui/core/AppBar";
-import Toolbar from "@material-ui/core/Toolbar";
-import List from "@material-ui/core/List";
-import Typography from "@material-ui/core/Typography";
+import CssBaseline from "@material-ui/core/CssBaseline";
 import Divider from "@material-ui/core/Divider";
+import Drawer from "@material-ui/core/Drawer";
 import IconButton from "@material-ui/core/IconButton";
-import MenuIcon from "@material-ui/icons/Menu";
-import ChevronLeftIcon from "@material-ui/icons/ChevronLeft";
-import ChevronRightIcon from "@material-ui/icons/ChevronRight";
+import List from "@material-ui/core/List";
 import ListItem from "@material-ui/core/ListItem";
 import ListItemIcon from "@material-ui/core/ListItemIcon";
 import ListItemText from "@material-ui/core/ListItemText";
-import InboxIcon from "@material-ui/icons/MoveToInbox";
-import MailIcon from "@material-ui/icons/Mail";
-import { useRouter } from "next/router";
-import { useAuth } from "../contexts/AuthContext";
+import {
+  createStyles,
+  makeStyles,
+  Theme,
+  useTheme,
+} from "@material-ui/core/styles";
+import Toolbar from "@material-ui/core/Toolbar";
+import Typography from "@material-ui/core/Typography";
 import {
   ExitToApp,
   Layers,
   Person,
   PersonAdd,
+  RecentActors,
   ViewCarousel,
 } from "@material-ui/icons";
+import ChevronLeftIcon from "@material-ui/icons/ChevronLeft";
+import ChevronRightIcon from "@material-ui/icons/ChevronRight";
+import MenuIcon from "@material-ui/icons/Menu";
+import clsx from "clsx";
+import { useRouter } from "next/router";
+import React from "react";
+import { useAuth } from "../contexts/AuthContext";
 
 const drawerWidth = 240;
 
@@ -168,6 +167,11 @@ export default function PersistentDrawerLeft(props) {
               route: "/decks",
               icon: Layers,
             },
+            {
+              title: "Partidas",
+              route: "/matches",
+              icon: RecentActors,
+            },
           ].map(({ title, route, icon: Icon }, index) => (
             <ListItem
               button
@@ -183,10 +187,14 @@ export default function PersistentDrawerLeft(props) {
             </ListItem>
           ))}
           {auth ? (
-            <ListItem button key={"Logout"} onClick={() => {
-              logout()
-              router.push('/')
-            }}>
+            <ListItem
+              button
+              key={"Logout"}
+              onClick={() => {
+                logout();
+                router.push("/");
+              }}
+            >
               <ListItemIcon>
                 <ExitToApp />
               </ListItemIcon>
