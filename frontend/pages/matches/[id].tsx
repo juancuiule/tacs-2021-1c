@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "../../src/contexts/AuthContext";
 import api from "../../src/utils/api";
 import { parseMatchState } from "../../src/utils/utils";
-import { Hero, MatchData } from "../../types";
+import { Hero, MatchData, MatchState } from "../../types";
 
 export default function Match() {
   const router = useRouter();
@@ -23,33 +23,30 @@ export default function Match() {
 
   const [matchState, setMatchState] = useState<MatchData | null>(null);
 
+  const { player1, player2, state } = matchState || {};
+
   const player =
     matchState !== null
-      ? userId == matchState.player1
+      ? userId == player1
         ? "player1"
-        : userId == matchState.player2
+        : userId == player2
         ? "player2"
         : undefined
-      : null;
+      : undefined;
 
   const [card, setCard] = useState<Hero | null>(null);
+
   useEffect(() => {
-    if (
-      matchState !== null &&
-      matchState.state.state === "preBattle" &&
-      player
-    ) {
+    if (matchState !== null && state.type === "preBattle" && player) {
       try {
-        const cardId = matchState.state[`${player}Card`];
+        const cardId = state[`${player}Card`];
         const fetchCards = async () => {
           const res = await api.GET<Hero>(`/cards/${cardId}`);
           console.log(res);
           setCard(res);
         };
         fetchCards();
-      } catch (e) {
-        console.log(3);
-      }
+      } catch (e) {}
     }
   }, [matchState]);
 
@@ -71,12 +68,8 @@ export default function Match() {
 
     ws.current.onmessage = (evt) => {
       if (evt.data !== "") {
-        const { steps, ...d } = JSON.parse(evt.data);
-        console.log(steps);
-        setMatchState({
-          ...d,
-          state: parseMatchState(steps[steps.length - 1][1]),
-        });
+        const matchData: MatchData = JSON.parse(evt.data);
+        setMatchState(matchData);
       }
     };
 
@@ -92,9 +85,9 @@ export default function Match() {
       Match {id}
       {ws.current &&
         matchState !== null &&
-        matchState.state.state !== "finished" &&
-        matchState.state.state !== "draw" &&
-        matchState.state.nextToPlay == userId && (
+        state.type !== "finished" &&
+        state.type !== "draw" &&
+        state.nextToPlay == userId && (
           <>
             <button
               onClick={() => {
@@ -123,29 +116,26 @@ export default function Match() {
             justifyContent: "space-between",
           }}
         >
-          {matchState.state.state !== "finished" &&
-          matchState.state.state !== "draw" ? (
+          {state.type !== "finished" && state.type !== "draw" ? (
             <>
               <div>
-                {matchState.state.state === "preBattle" && card && (
+                {state.type === "preBattle" && card && (
                   <div>
                     <img src={card.image} width="100px" height="100px" />
                   </div>
                 )}
-                <div>Cartas L: {matchState.state.player1Cards.length} </div>
+                <div>Cartas L: {state.player1Cards} </div>
               </div>
-              <div>Cartas Deck: {matchState.state.cardsInDeck.length} </div>
+              <div>Cartas Deck: {state.cardsInDeck} </div>
               <div>
                 <div style={{ width: "100px" }}></div>
-                <div>Cartas V: {matchState.state.player2Cards.length} </div>
+                <div>Cartas V: {state.player2Cards} </div>
               </div>
             </>
           ) : (
             <>
-              {matchState.state.state === "finished" && (
-                <>Winner {matchState.state.winner}</>
-              )}
-              {matchState.state.state === "draw" && <>Draw</>}
+              {state.type === "finished" && <>Ganador: {state.winner}</>}
+              {state.type === "draw" && <>Empate</>}
             </>
           )}
         </div>

@@ -4,7 +4,7 @@ package com.utn.tacs.domain.deck
 import cats.{Applicative, Monad}
 import cats.data.OptionT
 
-class DeckService[F[+_] : Applicative](repository: DeckRepository[F]) {
+class DeckService[F[+_] : Applicative](repository: DeckRepository[F])(implicit M: Monad[F]) {
 
   def create(deck: Deck): F[Deck] = repository.create(deck)
 
@@ -17,7 +17,7 @@ class DeckService[F[+_] : Applicative](repository: DeckRepository[F]) {
 
   def list(pageSize: Int, offset: Int): F[List[Deck]] = repository.list(pageSize, offset)
 
-  def addCard(id: Int, cardId: Int)(implicit m: Monad[F]): OptionT[F, Deck] = {
+  def addCard(id: Int, cardId: Int): OptionT[F, Deck] = {
     for {
       deck <- repository.get(id)
       updatedDeck = deck.copy(cards = deck.cards + cardId)
@@ -25,7 +25,13 @@ class DeckService[F[+_] : Applicative](repository: DeckRepository[F]) {
     } yield result
   }
 
-  def removeCard(id: Int, cardId: Int)(implicit m: Monad[F]): OptionT[F, Deck] = {
+  def getDeckCards(id: Int): OptionT[F, List[Int]] = {
+    for {
+      deck <- repository.get(id)
+    } yield deck.cards.toList
+  }
+
+  def removeCard(id: Int, cardId: Int): OptionT[F, Deck] = {
     for {
       deck <- repository.get(id)
       updatedDeck = deck.copy(cards = deck.cards.filter(_ != cardId))
@@ -36,6 +42,6 @@ class DeckService[F[+_] : Applicative](repository: DeckRepository[F]) {
 }
 
 object DeckService {
-  def apply[F[+_] : Applicative](repository: DeckRepository[F]) =
+  def apply[F[+_] : Applicative](repository: DeckRepository[F])(implicit M: Monad[F]) =
     new DeckService[F](repository)
 }

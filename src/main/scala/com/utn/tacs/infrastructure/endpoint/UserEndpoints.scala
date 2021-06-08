@@ -46,7 +46,7 @@ class UserEndpoints[F[_] : Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
 
       action.value.flatMap {
         case Right((user, token)) => {
-          Ok(LoginResponseDTO(user.userName, user.id.get, token.jwt.toEncodedString).asJson).map(auth.embed(_, token))
+          Ok(LoginResponseDTO(user.userName, user.id.get.toString, token.jwt.toEncodedString).asJson).map(auth.embed(_, token))
         }
         case Left(UserAuthenticationFailedError(name)) =>
           BadRequest(Json.obj(
@@ -56,7 +56,7 @@ class UserEndpoints[F[_] : Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
       }
     }
 
-  case class LoginResponseDTO(userName: String, id: Long, accessToken: String)
+  case class LoginResponseDTO(userName: String, id: String, accessToken: String)
 
 
   private def signupEndpoint(
@@ -82,7 +82,7 @@ class UserEndpoints[F[_] : Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
           } yield firstToken
 
           firstToken.value.flatMap {
-            case Right(token) => Ok(LoginResponseDTO(saved.userName, saved.id.get, token.jwt.toEncodedString).asJson).map(auth.embed(_, token))
+            case Right(token) => Ok(LoginResponseDTO(saved.userName, saved.id.get.toString, token.jwt.toEncodedString).asJson).map(auth.embed(_, token))
             case Left(_) => ???
           }
         }

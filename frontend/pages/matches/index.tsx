@@ -2,7 +2,7 @@ import {
   Container,
   IconButton,
   Paper,
-  TableContainer,
+  TableContainer
 } from "@material-ui/core";
 import { makeStyles } from "@material-ui/core/styles";
 import Table from "@material-ui/core/Table";
@@ -10,7 +10,7 @@ import TableBody from "@material-ui/core/TableBody";
 import TableCell from "@material-ui/core/TableCell";
 import TableHead from "@material-ui/core/TableHead";
 import TableRow from "@material-ui/core/TableRow";
-import { Delete, Edit } from "@material-ui/icons";
+import { Edit } from "@material-ui/icons";
 import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
 import Header from "../../src/components/Header";
@@ -18,7 +18,6 @@ import LinkButton from "../../src/components/LinkButton";
 import { useAuth } from "../../src/contexts/AuthContext";
 import api from "../../src/utils/api";
 import { parseMatchState } from "../../src/utils/utils";
-import { MatchData } from "../../types";
 
 const useStyles = makeStyles((theme) => ({
   seeMore: {
@@ -35,7 +34,7 @@ const useStyles = makeStyles((theme) => ({
 export default function Decks() {
   const classes = useStyles();
 
-  const [matches, setMatches] = useState<MatchData[]>([]);
+  const [matches, setMatches] = useState<any[]>([]);
 
   const {
     authState: { accessToken, auth, fetched },
@@ -46,7 +45,7 @@ export default function Decks() {
   useEffect(() => {
     if (accessToken) {
       const fetchMatches = async () => {
-        const res = await api.GET<{ matches: MatchData[] }>(
+        const res = await api.GET<{ matches: any[] }>(
           "/matches",
           accessToken
         );

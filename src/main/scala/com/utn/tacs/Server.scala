@@ -62,7 +62,7 @@ object Server {
       auth = routeAuth
     )
 
-    val matchService = MatchService(matchRepo, validation = MatchValidation(matchRepo))
+    val matchService = MatchService(matchRepo, validation = MatchValidation(matchRepo), deckService)
     val matchEndpoints = MatchEndpoints[F, HMACSHA256](
       service = matchService,
       userService,

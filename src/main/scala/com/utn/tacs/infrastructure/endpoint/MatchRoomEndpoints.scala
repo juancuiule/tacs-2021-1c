@@ -46,9 +46,7 @@ class MatchRoomEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
                     .map(msg => Text(msg.toString))
 
                 val inputPipe: Pipe[F, WebSocketFrame, Unit] = processInput(user, m, topic)
-                for {
-                  wsResponse <- WebSocketBuilder[F].build(toClient, inputPipe)
-                } yield wsResponse
+                WebSocketBuilder[F].build(toClient, inputPipe)
               }
               case _ => Response[F](status = Unauthorized).pure[F]
             }
@@ -74,8 +72,6 @@ class MatchRoomEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
           case GetMatch(_, _) => service.noop(currM)
           case Battle(user, _, key) if service.playerCanBattle(currM, user) => service.battleByAttribute(key)(currM)
           case Withdraw(user, _) => service.withdraw(user)(currM)
-          case Disconnect(_, _) => service.noop(currM)
-          case InvalidInput(_, _) => service.noop(currM)
           case _ => service.noop(currM)
         }
       } yield updated
@@ -86,7 +82,6 @@ class MatchRoomEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
           case Battle(_, _, _) => t.publish1(SendToUsers(newMatch.players, newMatch.some))
           case Withdraw(_, _) => t.publish1(SendToUsers(newMatch.players, newMatch.some))
           case Disconnect(_, _) => t.publish1(SendToUsers(newMatch.players, newMatch.some))
-          case InvalidInput(_, _) => t.publish1(SendToUser(user.id.get, None))
           case _ => t.publish1(SendToUser(user.id.get, None))
         }
       })

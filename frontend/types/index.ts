@@ -26,49 +26,43 @@ export type Deck = {
   cards: number[];
 };
 
-export type Action = Withdraw | Battle | NoOp | InitMatch | DealCards;
+export type MatchState =
+  | DrawState
+  | FinishedState
+  | PreBattleState
+  | BattleResultState;
 
-export type Withdraw = { Withdraw: { loser: number } };
-export type Battle = { Battle: { cardAttribute: string } };
-export type NoOp = { NoOp: {} };
-export type InitMatch = { InitMatch: {} };
-export type DealCards = { DealCards: {} };
-
-export type MatchState = BattleResult | PreBattle | Finished | Draw;
-
-export type PlayingBase = {
-  cardsInDeck: number[];
-  player1Cards: number[];
-  player2Cards: number[];
+export type DrawState = {
+  type: "draw";
 };
-export type BattleResult = { BattleResult: {} & PlayingBase };
-export type PreBattle = {
-  PreBattle: { player1Card: number; player2Card: number } & PlayingBase;
-};
-export type Finished = { Finished: { winner: string } };
-export type Draw = { Draw: PlayingBase };
 
-export type Step = [Action, MatchState];
+export type FinishedState = {
+  type: "finished";
+  winner: string;
+};
+
+export type PreBattleState = {
+  type: "preBattle";
+  nextToPlay: string;
+  player1Card: string;
+  player2Card: string;
+  cardsInDeck: number;
+  player1Cards: number;
+  player2Cards: number;
+};
+
+export type BattleResultState = {
+  type: "battleResult";
+  nextToPlay: string;
+  cardsInDeck: number;
+  player1Cards: number;
+  player2Cards: number;
+};
 
 export type MatchData = {
+  deck: number;
   matchId: string;
-  deck: string;
   player1: string;
   player2: string;
-  steps: Step[];
-  state: ParsedState;
+  state: MatchState;
 };
-
-export type ParsedState =
-  | ({
-      nextToPlay: string;
-      state: "battleResult";
-    } & PlayingBase)
-  | ({
-      nextToPlay: string;
-      state: "preBattle";
-      player1Card: number;
-      player2Card: number;
-    } & PlayingBase)
-  | ({ state: "draw" } & PlayingBase)
-  | ({ state: "finished", winner: string } & PlayingBase);

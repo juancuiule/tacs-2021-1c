@@ -43,12 +43,6 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
       Ok(Json.obj(("matches", matches.asJson)))
   }
 
-//  private val getAllMatches = HttpRoutes.of[F] {
-//    case GET -> Root =>
-//      val matches = service.getMatches
-//      Ok(Json.obj(("matches", matches.asJson)))
-//  }
-
   private val createMatchEndpoint: AuthEndpoint[F, Auth] = {
     // TODO: validar que no este jugando partida contra él mismo
     case req@POST -> Root asAuthed _ =>

@@ -2,11 +2,13 @@ package com.utn.tacs.domain.`match`
 
 import cats.data.EitherT
 import cats.implicits.catsSyntaxApplicativeId
+import cats.syntax.all._
 import cats.{Applicative, Monad}
 import com.utn.tacs.domain.`match`.Match.MatchStep
 import com.utn.tacs.domain.`match`.MatchAction._
 import com.utn.tacs.domain.`match`.MatchState
 import com.utn.tacs.domain.`match`.MatchState.{BattleResult, Draw, Finished, PreBattle}
+import com.utn.tacs.domain.deck.DeckService
 
 import scala.util.Random
 
@@ -20,7 +22,9 @@ case object MatchAlreadyExistsError extends MatchError
 
 class MatchService[F[+_] : Applicative](
   repository: MatchRepository,
-  validation: MatchValidation[F]
+  validation: MatchValidation[F],
+  //  cardService: CardService[F],
+  deckService: DeckService[F]
 )(implicit M: Monad[F]) {
   type ActionMethod = Match => EitherT[F, MatchNotFoundError.type, Match]
 
@@ -49,11 +53,13 @@ class MatchService[F[+_] : Applicative](
   def dealCards: ActionMethod = excecute(MatchAction.DealCards)
 
   private def initMatch: ActionMethod = m => {
-    EitherT.fromEither {
-      Right(m.copy(steps = List(
-        (InitMatch, BattleResult(List(625, 578, 500, 625, 578, 500, 625, 578, 500, 625, 578, 500), List(), List(), m.player1))
-      )))
-    }
+    val cards = deckService.getDeckCards(m.deck).getOrElse(List())
+    val theMatch: F[Match] = cards.map(deckCards => {
+      m.copy(steps = List(
+        (InitMatch, BattleResult(deckCards, List(), List(), m.player1))
+      ))
+    })
+    EitherT.right(theMatch)
   }
 
   def getMatchesForPlayer(player: Long): List[Match] = {
@@ -77,7 +83,7 @@ class MatchService[F[+_] : Applicative](
 
   def withdraw(loserPlayer: Long): ActionMethod = excecute(MatchAction.Withdraw(loserPlayer))
 
-  private def excecute(matchAction: MatchAction): Match => EitherT[F, MatchNotFoundError.type, Match] = (aMatch: Match) => {
+  private def excecute(matchAction: MatchAction): ActionMethod = (aMatch: Match) => {
     val newMatch = play(aMatch, matchAction)
     val updated = repository.updateMatch(newMatch)
     EitherT.fromEither {
@@ -138,6 +144,6 @@ class MatchService[F[+_] : Applicative](
 }
 
 object MatchService {
-  def apply[F[+_] : Applicative](repository: MatchRepository, validation: MatchValidation[F])(implicit M: Monad[F]) =
-    new MatchService[F](repository, validation)
+  def apply[F[+_] : Applicative](repository: MatchRepository, validation: MatchValidation[F], deckService: DeckService[F])(implicit M: Monad[F]) =
+    new MatchService[F](repository, validation, deckService)
 }
