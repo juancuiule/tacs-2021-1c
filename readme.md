@@ -5,6 +5,10 @@
 * [Docker](https://docs.docker.com/engine/install/)
 * [Docker Compose](https://docs.docker.com/compose/install/)
 
+## Demo jugar partida
+
+* [Video](https://drive.google.com/file/d/1pgeNWgH1nG7xEHFzKU_tGkN-K-crDWPF/view)
+
 ## Ejecutar la aplicación 📦
 
 * Para ejecutar la aplicación, es necesario tener [Docker](https://www.docker.com/) instalado
@@ -40,8 +44,7 @@
           "fullName": "Terry McGinnis",
           "publisher": "DC Comics"
       }
-    },
-    ...
+    }
   ]
 }
 ```
@@ -147,8 +150,7 @@ repsonse:
         "fullName": "Kon-El / Conner Kent",
         "publisher": "DC Comics"
       }
-    },
-    ...
+    }
   ]
 }
 ```
@@ -185,9 +187,7 @@ repsonse:
 {
   "id": 1,
   "name": "Marvel Deck",
-  "cards": [
-    ...
-  ]
+  "cards": []
 }
 ```
 ---
@@ -196,8 +196,7 @@ repsonse:
 ```json
 {
   "decks": [
-    { "id": 1, "name": "Marvel Deck", "cards": [...] },
-    ...
+    { "id": 1, "name": "Marvel Deck", "cards": [] }
   ]
 }
 ```
@@ -214,9 +213,7 @@ response:
 {
   "id": 1,
   "name": "Marvel Deck",
-  "cards": [
-    ...
-  ]
+  "cards": []
 }
 ```
 ---
@@ -231,7 +228,7 @@ body:
 {
   "userName": "usuarioDePrueba",
   "password": "passwordDePrueba",
-  "role": "Admin" | "Player" // esto cambiaría
+  "role": "Admin" //  | "Player" // esto cambiaría
 }
 ```
 
@@ -250,7 +247,7 @@ body:
 ```json
 {
   "userName": "usuarioDePrueba",
-  "password": "passwordDePrueba",
+  "password": "passwordDePrueba"
 }
 ```
 
