@@ -1,6 +1,6 @@
-import { MatchState, ParsedState } from "../../types";
+import { MatchState } from "../../types";
 
-export const parseMatchState = (matchState: MatchState): ParsedState => {
+export const parseMatchState = (matchState: MatchState) => {
   if (matchState["BattleResult"]) {
     return { state: "battleResult", ...matchState["BattleResult"] };
   } else if (matchState["PreBattle"]) {

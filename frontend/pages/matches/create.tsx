@@ -100,7 +100,6 @@ export default function CreateDeck() {
               <form
                 onSubmit={handleSubmit}
                 id="match-form"
-                className={classes.loginContainer}
               >
                 <TextField
                   className={classes.formControl}
