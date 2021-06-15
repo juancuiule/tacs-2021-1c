@@ -9,7 +9,7 @@ import com.utn.tacs.domain.cards._
 import com.utn.tacs.domain.deck.DeckService
 import com.utn.tacs.domain.user.{UserService, UserValidation}
 import com.utn.tacs.infrastructure.endpoint._
-import com.utn.tacs.infrastructure.repository.doobie.DoobieCardRepository
+import com.utn.tacs.infrastructure.repository.doobie.{DoobieCardRepository, DoobieUserRepository}
 import com.utn.tacs.infrastructure.repository.memory._
 import doobie.util.ExecutionContexts
 import fs2.concurrent.Topic
@@ -40,28 +40,12 @@ object Server {
 
     val key = HMACSHA256.generateKey[Id]
 
-    val userRepo = UserMemoryRepository()
-
-    val matchRepo = MatchMemoryRepository()
-    val deckRepo = DeckMemoryRepository()
-    val authRepo = AuthMemoryRepository(key)
-
-    val authenticator = Auth.jwtAuthenticator[F, HMACSHA256](key, authRepo, userRepo)
-
-    val routeAuth = SecuredRequestHandler(authenticator)
-
-    val deckService = DeckService(deckRepo)
-    val deckEndpoints = DeckEndpoints[F, HMACSHA256](
-      repository = deckRepo,
-      deckService,
-      auth = routeAuth
-    )
-
-    val userService = UserService(userRepo, validation = UserValidation(userRepo))
-    val userEndpoints = UserEndpoints.endpoints[F, BCrypt, HMACSHA256](
-      userService,
-      cryptService = BCrypt.syncPasswordHasher[F],
-      auth = routeAuth
+    val dbConfig = DatabaseConfig(
+      "jdbc:postgresql://localhost:5432/superamigos",
+      "org.postgresql.Driver",
+      "tacs",
+      "secret123",
+      DatabaseConnectionsConfig(32)
     )
 
     for {
@@ -71,16 +55,32 @@ object Server {
       connEc <- fs2.Stream.resource(ExecutionContexts.fixedThreadPool[F](32))
       txnEc <- fs2.Stream.resource(ExecutionContexts.cachedThreadPool[F])
       xa <- fs2.Stream.resource(DatabaseConfig.dbTransactor(
-        DatabaseConfig(
-          "jdbc:postgresql://localhost:5432/superamigos",
-          "org.postgresql.Driver",
-          "tacs",
-          "secret123",
-          DatabaseConnectionsConfig(32)
-        ),
+        dbConfig,
         connEc,
         Blocker.liftExecutionContext(txnEc)
       ))
+
+      matchRepo = MatchMemoryRepository()
+      deckRepo = DeckMemoryRepository()
+      authRepo = AuthMemoryRepository(key)
+
+      userRepo = DoobieUserRepository[F](xa) // UserMemoryRepository()
+      authenticator = Auth.jwtAuthenticator[F, HMACSHA256](key, authRepo, userRepo)
+      routeAuth = SecuredRequestHandler(authenticator)
+
+      deckService = DeckService(deckRepo)
+      deckEndpoints = DeckEndpoints[F, HMACSHA256](
+        repository = deckRepo,
+        deckService,
+        auth = routeAuth
+      )
+
+      userService = UserService(userRepo, validation = UserValidation(userRepo))
+      userEndpoints = UserEndpoints.endpoints[F, BCrypt, HMACSHA256](
+        userService,
+        cryptService = BCrypt.syncPasswordHasher[F],
+        auth = routeAuth
+      )
 
       //      val cardRepo = CardMemoryRepository()
       cardRepo = DoobieCardRepository[F](xa)

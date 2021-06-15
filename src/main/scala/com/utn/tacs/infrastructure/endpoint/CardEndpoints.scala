@@ -22,12 +22,6 @@ class CardEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
   superHeroeService: SHService[F],
   auth: SecuredRequestHandler[F, Long, User, AugmentedJWT[Auth, Long]]
 ) extends Http4sDsl[F] {
-
-  case class AddCardDTO(id: Int)
-  implicit val addCardDTODecoder: EntityDecoder[F, AddCardDTO] = jsonOf
-
-  implicit val cardDecoder: EntityDecoder[F, Card] = jsonOf
-
   private val addCardEndpoint: AuthEndpoint[F, Auth] = {
     case req@POST -> Root asAuthed _ =>
       val actionResult = for {
@@ -45,6 +39,9 @@ class CardEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
       }
   }
 
+  implicit val addCardDTODecoder: EntityDecoder[F, AddCardDTO] = jsonOf
+
+  implicit val cardDecoder: EntityDecoder[F, Card] = jsonOf
   private val getCardEndpoint: HttpRoutes[F] =
     HttpRoutes.of[F] {
       case GET -> Root / IntVar(id) =>
@@ -54,20 +51,17 @@ class CardEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
           case Right(card) => Ok(card.asJson)
         }
     }
-
-
   private val getCardsEndpoint: HttpRoutes[F] = {
     HttpRoutes.of[F] {
       case GET -> Root :? PublisherQueryParamMatcher(publisher) => // +& PageSizeQueryParamMatcher(_) +& OffsetQueryParamMatcher(_) =>
         for {
-          cards <- cardService.getByPublisher(publisher.getOrElse("")) // service.getAll(pageSize.getOrElse(100), offset.getOrElse(0))
+          cards <- publisher.fold(cardService.getAll())(pub => cardService.getByPublisher(pub))
           resp <- Ok(Json.obj(
             ("cards", cards.asJson)
           ))
         } yield resp
     }
   }
-
   private val getPublishersEndpoint: HttpRoutes[F] = {
     HttpRoutes.of[F] {
       case GET -> Root / "publishers" =>
@@ -85,6 +79,8 @@ class CardEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
     val unauthEndpoints = getCardEndpoint <+> getCardsEndpoint <+> getPublishersEndpoint
     unauthEndpoints <+> auth.liftService(authEndpoints)
   }
+
+  case class AddCardDTO(id: Int)
 
   object PublisherQueryParamMatcher extends OptionalQueryParamDecoderMatcher[String]("publisher")
 

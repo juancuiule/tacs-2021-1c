@@ -2,28 +2,15 @@ package com.utn.tacs.infrastructure.repository.doobie
 
 import cats.data.OptionT
 import cats.effect.Bracket
+import cats.free.Free
 import com.utn.tacs.domain.cards.{Biography, Card, CardRepository, Stats}
 import doobie._
+import doobie.free.connection
 import doobie.implicits._
 
 private object CardSQL {
-  implicit val han = LogHandler.jdkLogHandler
-
-  val selectAll = {
-    case class AuxCard(
-      id: Int,
-      name: String,
-      image: String,
-      fullname: String,
-      publisher: String,
-      height: Int,
-      weight: Int,
-      intelligence: Int,
-      speed: Int,
-      power: Int,
-      combat: Int,
-      strength: Int
-    )
+  implicit val han: LogHandler = LogHandler.jdkLogHandler
+  val selectAll: doobie.ConnectionIO[List[Card]] = {
     sql"""
     select
            card.id,
@@ -41,19 +28,10 @@ private object CardSQL {
     from superamigos.public.card
     join superamigos.public.biography b on b.id = card.id
     join superamigos.public.stat s on card.id = s.id;
-  """.query[AuxCard].map(aux => Card(aux.id, aux.name,
-      Stats(
-        aux.height,
-        aux.weight,
-        aux.intelligence,
-        aux.speed,
-        aux.power,
-        aux.combat,
-        aux.strength
-      ), aux.image, Biography(aux.fullname, aux.publisher))).to[List]
+  """.query[JoinedCard].map(_.toCard).to[List]
   }
 
-  def insert(card: Card) = {
+  def insert(card: Card): Free[connection.ConnectionOp, Int] = {
     print(card)
     val stats = card.stats
     val biography = card.biography
@@ -71,17 +49,70 @@ private object CardSQL {
       }
   }
 
-  //  def select(cardId: Int): Query0[User] =
-  //    sql"""
-  //    SELECT userName, passwordHash, id, role
-  //    FROM users
-  //    WHERE id = $userId
-  //  """.query
-  //
-  //  def delete(userId: Int): Update0 =
-  //    sql"""
-  //    DELETE FROM users WHERE id = $userId
-  //  """.update
+  def select(cardId: Int): Query0[Card] =
+    sql"""
+    select
+           card.id,
+           name,
+           image,
+           fullname,
+           publisher,
+           height,
+           weight,
+           intelligence,
+           speed,
+           power,
+           combat,
+           strength
+    from superamigos.public.card
+    join superamigos.public.biography b on b.id = card.id
+    join superamigos.public.stat s on card.id = s.id
+    where card.id = ${cardId};
+  """.query[JoinedCard].map(_.toCard)
+
+  def selectByPublisher(publisher: String): doobie.ConnectionIO[List[Card]] =
+    sql"""
+    select
+           card.id,
+           name,
+           image,
+           fullname,
+           publisher,
+           height,
+           weight,
+           intelligence,
+           speed,
+           power,
+           combat,
+           strength
+    from superamigos.public.card
+    join superamigos.public.biography b on b.id = card.id
+    join superamigos.public.stat s on card.id = s.id
+    where publisher = ${publisher};
+  """.query[JoinedCard].map(_.toCard).to[List]
+
+  case class JoinedCard(
+    id: Int,
+    name: String,
+    image: String,
+    fullname: String,
+    publisher: String,
+    height: Int,
+    weight: Int,
+    intelligence: Int,
+    speed: Int,
+    power: Int,
+    combat: Int,
+    strength: Int
+  ) {
+    def toCard: Card = Card(
+      this.id,
+      this.name,
+      Stats(this.height, this.weight, this.intelligence, this.speed, this.power, this.combat, this.strength),
+      this.image,
+      Biography(this.fullname, this.publisher)
+    )
+  }
 }
 
 class DoobieCardRepository[F[_] : Bracket[*[_], Throwable]](val xa: Transactor[F])
@@ -90,36 +121,16 @@ class DoobieCardRepository[F[_] : Bracket[*[_], Throwable]](val xa: Transactor[F
 
   import CardSQL._
 
-  //
-  //  def update(user: User): OptionT[F, User] =
-  //    OptionT.fromOption[F](user.id).semiflatMap { id =>
-  //      CardSQL.update(user, id).run.transact(xa).as(user)
-  //    }
-  //
-  //  def get(userId: Long): OptionT[F, User] = OptionT(select(userId).option.transact(xa))
-  //
-  //  def findByUserName(userName: String): OptionT[F, User] =
-  //    OptionT(byUserName(userName).option.transact(xa))
-  //
-  //  def delete(userId: Long): OptionT[F, User] =
-  //    get(userId).semiflatMap(user => CardSQL.delete(userId).run.transact(xa).as(user))
-  //
-  //  def deleteByUserName(userName: String): OptionT[F, User] =
-  //    findByUserName(userName).mapFilter(_.id).flatMap(delete)
-
-  //  def list(pageSize: Int, offset: Int): F[List[User]] =
-  //    paginate(pageSize, offset)(selectAll).to[List].transact(xa)
-
   override def create(card: Card): F[Card] =
     insert(card).map(id => card.copy(id = id)).transact(xa)
 
-  override def findByPublisher(publisher: String): F[List[Card]] = selectAll.transact(xa)
+  override def findByPublisher(publisher: String): F[List[Card]] = selectByPublisher(publisher).transact(xa)
 
-  override def update(card: Card): OptionT[F, Card] = ???
-
-  override def get(id: Int): OptionT[F, Card] = ???
+  override def get(id: Int): OptionT[F, Card] = OptionT(select(id).option.transact(xa))
 
   override def getAll: F[List[Card]] = selectAll.transact(xa)
+
+  override def update(card: Card): OptionT[F, Card] = ???
 
   override def delete(id: Int): OptionT[F, Card] = ???
 

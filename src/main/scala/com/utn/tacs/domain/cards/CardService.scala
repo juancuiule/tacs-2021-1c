@@ -23,10 +23,9 @@ class CardService[F[+_] : Applicative](
 
   def getByPublisher(publisher: String): F[List[Card]] = repository.findByPublisher(publisher)
 
-  def getAll(pageSize: Int, offset: Int): F[List[Card]] =
-    repository.list(pageSize, offset)
+  def getAll(): F[List[Card]] = repository.getAll
 
-  def get(id: Int): EitherT[F, CardNotFoundError.type, Card] = ???
+  def get(id: Int): EitherT[F, CardNotFoundError.type, Card] = repository.get(id).toRight(CardNotFoundError)
 
   def getPublishers: F[List[String]] = {
     repository.getAll.map(cards => cards.map(_.biography.publisher).distinct)

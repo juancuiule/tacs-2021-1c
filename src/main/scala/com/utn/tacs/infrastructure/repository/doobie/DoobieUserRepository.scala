@@ -12,39 +12,40 @@ import tsec.authentication.IdentityStore
 
 private object UserSQL {
   // H2 does not support JSON data type.
+  implicit val han: LogHandler = LogHandler.jdkLogHandler
   implicit val roleMeta: Meta[Role] =
     Meta[String].imap(decode[Role](_).leftMap(throw _).merge)(_.asJson.toString)
 
   def insert(user: User): Update0 = sql"""
-    INSERT INTO users (userName, passwordHash, role)
+    INSERT INTO superamigos.public.users (userName, passwordHash, role)
     VALUES (${user.userName}, ${user.passwordHash}, ${user.role})
   """.update
 
   def update(user: User, id: Long): Update0 = sql"""
-    UPDATE users
+    UPDATE superamigos.public.users
     SET userName = ${user.userName}, passwordHash = ${user.passwordHash}, role = ${user.role}
     WHERE id = $id
   """.update
 
   def select(userId: Long): Query0[User] = sql"""
     SELECT userName, passwordHash, id, role
-    FROM users
+    FROM superamigos.public.users
     WHERE id = $userId
   """.query
 
   def byUserName(userName: String): Query0[User] = sql"""
     SELECT userName, passwordHash, id, role
-    FROM users
+    FROM superamigos.public.users
     WHERE userName = $userName
   """.query[User]
 
   def delete(userId: Long): Update0 = sql"""
-    DELETE FROM users WHERE id = $userId
+    DELETE FROM superamigos.public.users WHERE id = $userId
   """.update
 
   val selectAll: Query0[User] = sql"""
     SELECT userName, passwordHash, id, role
-    FROM users
+    FROM superamigos.public.users
   """.query
 }
 

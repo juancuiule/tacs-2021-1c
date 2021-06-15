@@ -18,7 +18,7 @@ CREATE TABLE if not exists stat
     strength     integer NOT NULL
 );
 
--- alter table stat add constraint stat_id primary key (id);
+alter table stat add constraint stat_id primary key (id);
 
 CREATE TABLE if not exists biography
 (
@@ -27,15 +27,13 @@ CREATE TABLE if not exists biography
     publisher varchar
 );
 
--- alter table biography add constraint biography_id primary key (id);
+alter table biography add constraint biography_id primary key (id);
 
 CREATE TABLE if not exists card
 (
     id        integer,
-    statsId     integer,
     name      varchar NOT NULL,
-    image     varchar NOT NULL,
-    biographyId integer
+    image     varchar NOT NULL
 );
 
 alter table card add constraint card_id primary key (id);
