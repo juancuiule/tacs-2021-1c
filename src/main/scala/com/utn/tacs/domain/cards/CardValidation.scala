@@ -4,9 +4,9 @@ import cats.Applicative
 import cats.data.EitherT
 import cats.implicits._
 
-class CardValidation[F[_] : Applicative](repository: CardRepository) {
+class CardValidation[F[_] : Applicative](repository: CardRepository[F]) {
   def doesNotExist(card: Card): EitherT[F, CardAlreadyExistsError, Unit] = EitherT {
-    repository.findByName(card.name).pure[F].map {
+    repository.findByName(card.name).map {
       cards =>
         if (cards.forall(c => c.biography != card.biography))
           Right(())
@@ -17,7 +17,7 @@ class CardValidation[F[_] : Applicative](repository: CardRepository) {
 
   def exists(cardId: Option[Int]): EitherT[F, CardNotFoundError.type, Unit] = EitherT {
     cardId match {
-      case Some(id) => repository.get(id).pure[F].map {
+      case Some(id) => repository.get(id).value.map {
         case Some(_) => Right(())
         case _ => Left(CardNotFoundError)
       }
@@ -27,5 +27,5 @@ class CardValidation[F[_] : Applicative](repository: CardRepository) {
 }
 
 object CardValidation {
-  def apply[F[_] : Applicative](repository: CardRepository) = new CardValidation[F](repository)
+  def apply[F[_] : Applicative](repository: CardRepository[F]) = new CardValidation[F](repository)
 }

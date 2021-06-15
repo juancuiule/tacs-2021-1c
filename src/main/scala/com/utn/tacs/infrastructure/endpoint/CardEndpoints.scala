@@ -17,7 +17,7 @@ import tsec.jwt.algorithms.JWTMacAlgo
 
 
 class CardEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
-  repository: CardRepository,
+  repository: CardRepository[F],
   cardService: CardService[F],
   superHeroeService: SHService[F],
   auth: SecuredRequestHandler[F, Long, User, AugmentedJWT[Auth, Long]]
@@ -39,7 +39,7 @@ class CardEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
       actionResult.flatMap {
         case None => BadRequest("The superheroe does not exist")
         case Some(superhero: Superhero) => superhero.card match {
-          case Some(card) => Created(repository.create(card).asJson)
+          case Some(card) => repository.create(card).flatMap(card => Created(card.asJson))
           case None => BadRequest("The superheroe can't convert to card")
         }
       }
@@ -97,7 +97,7 @@ class CardEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
 
 object CardEndpoints {
   def apply[F[+_] : Sync, Auth: JWTMacAlgo](
-    repository: CardRepository,
+    repository: CardRepository[F],
     cardService: CardService[F],
     superHeroeService: SHService[F],
     auth: SecuredRequestHandler[F, Long, User, AugmentedJWT[Auth, Long]]

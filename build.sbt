@@ -7,7 +7,8 @@ val tsecV = "0.2.1"
 val CatsVersion = "2.2.0"
 val ScalaTestVersion = "3.2.9"
 val ScalaTestPlusVersion = "3.2.2.0"
-
+val DoobieVersion = "0.12.1"
+val FlywayVersion = "7.5.2"
 
 lazy val root = (project in file("."))
   .settings(
@@ -49,6 +50,14 @@ lazy val root = (project in file("."))
       "io.github.jmcardon" %% "tsec-jwt-mac",
       "io.github.jmcardon" %% "tsec-jwt-sig",
       "io.github.jmcardon" %% "tsec-http4s").map(_ % tsecV),
+    libraryDependencies ++= Seq(
+      "org.tpolecat" %% "doobie-core"     % DoobieVersion,
+      "org.tpolecat" %% "doobie-postgres" % DoobieVersion,
+      "org.tpolecat" %% "doobie-postgres" % DoobieVersion,
+      "org.tpolecat" %% "doobie-hikari"   % DoobieVersion,
+      "org.tpolecat" %% "doobie-specs2"   % DoobieVersion,
+      "org.flywaydb"  % "flyway-core"     % FlywayVersion,
+    ),
     libraryDependencies ++= (scalaBinaryVersion.value match {
       case "2.10" =>
         compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full) :: Nil

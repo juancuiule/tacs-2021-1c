@@ -102,9 +102,12 @@ class MatchService[F[+_] : Applicative](
 
           cards.value.flatMap {
             case Right((c1, c2)) => {
-              if (op(cardAttribute)(c1.stats.get(cardAttribute), c2.stats.get(cardAttribute))) {
+              val card1Value = c1.stats.get(cardAttribute)
+              val card2Value = c2.stats.get(cardAttribute)
+
+              if (op(cardAttribute)(card1Value, card2Value)) {
                 BattleResult(cardsInDeck, player1Cards :+ card1 :+ card2, player2Cards, next).pure[F]
-              } else if (c1.stats.get(cardAttribute) < c2.stats.get(cardAttribute)) {
+              } else if (op(cardAttribute)(card2Value, card1Value)) {
                 BattleResult(cardsInDeck, player1Cards, player2Cards :+ card1 :+ card2, next).pure[F]
               } else {
                 BattleResult(cardsInDeck, player1Cards :+ card1, player2Cards :+ card2, next).pure[F]

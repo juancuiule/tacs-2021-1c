@@ -1,14 +1,17 @@
 package com.utn.tacs
 
 import cats.Id
-import cats.effect.{ConcurrentEffect, ContextShift, ExitCode, Timer}
+import cats.effect.{Blocker, ConcurrentEffect, ContextShift, ExitCode, Timer}
+import com.utn.tacs.db.{DatabaseConfig, DatabaseConnectionsConfig}
 import com.utn.tacs.domain.`match`.{MatchService, MatchValidation, OutputMessage}
 import com.utn.tacs.domain.auth.Auth
 import com.utn.tacs.domain.cards._
 import com.utn.tacs.domain.deck.DeckService
 import com.utn.tacs.domain.user.{UserService, UserValidation}
 import com.utn.tacs.infrastructure.endpoint._
+import com.utn.tacs.infrastructure.repository.doobie.DoobieCardRepository
 import com.utn.tacs.infrastructure.repository.memory._
+import doobie.util.ExecutionContexts
 import fs2.concurrent.Topic
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.client.middleware.FollowRedirect
@@ -20,7 +23,6 @@ import tsec.authentication.SecuredRequestHandler
 import tsec.mac.jca.HMACSHA256
 import tsec.passwordhashers.jca.BCrypt
 
-import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration.DurationInt
 
 
@@ -39,7 +41,7 @@ object Server {
     val key = HMACSHA256.generateKey[Id]
 
     val userRepo = UserMemoryRepository()
-    val cardRepo = CardMemoryRepository()
+
     val matchRepo = MatchMemoryRepository()
     val deckRepo = DeckMemoryRepository()
     val authRepo = AuthMemoryRepository(key)
@@ -62,25 +64,41 @@ object Server {
       auth = routeAuth
     )
 
-    val cardService = CardService(cardRepo, validation = CardValidation(cardRepo))
-
-    val matchService = MatchService(matchRepo, validation = MatchValidation(matchRepo), deckService, cardService)
-    val matchEndpoints = MatchEndpoints[F, HMACSHA256](
-      service = matchService,
-      userService,
-      deckService,
-      auth = routeAuth
-    )
-
-    val matchRoomEndpoints = MatchRoomEndpoints[F, HMACSHA256](
-      service = matchService,
-      auth = routeAuth,
-      topic = topic
-    )
-
-
     for {
-      client <- BlazeClientBuilder[F](global).stream.map(FollowRedirect(3)(_))
+      clientEc <- fs2.Stream.resource(ExecutionContexts.cachedThreadPool[F])
+      client <- BlazeClientBuilder[F](clientEc).stream.map(FollowRedirect(3)(_))
+
+      connEc <- fs2.Stream.resource(ExecutionContexts.fixedThreadPool[F](32))
+      txnEc <- fs2.Stream.resource(ExecutionContexts.cachedThreadPool[F])
+      xa <- fs2.Stream.resource(DatabaseConfig.dbTransactor(
+        DatabaseConfig(
+          "jdbc:postgresql://localhost:5432/superamigos",
+          "org.postgresql.Driver",
+          "tacs",
+          "secret123",
+          DatabaseConnectionsConfig(32)
+        ),
+        connEc,
+        Blocker.liftExecutionContext(txnEc)
+      ))
+
+      //      val cardRepo = CardMemoryRepository()
+      cardRepo = DoobieCardRepository[F](xa)
+      cardService = CardService(cardRepo, validation = CardValidation(cardRepo))
+
+      matchService = MatchService(matchRepo, validation = MatchValidation(matchRepo), deckService, cardService)
+      matchEndpoints = MatchEndpoints[F, HMACSHA256](
+        service = matchService,
+        userService,
+        deckService,
+        auth = routeAuth
+      )
+
+      matchRoomEndpoints = MatchRoomEndpoints[F, HMACSHA256](
+        service = matchService,
+        auth = routeAuth,
+        topic = topic
+      )
 
       cardEndpoints = CardEndpoints[F, HMACSHA256](
         repository = cardRepo,
@@ -102,7 +120,8 @@ object Server {
         "/rooms" -> matchRoomEndpoints
       ).orNotFound
 
-      exitCode <- BlazeServerBuilder[F](global)
+      serverEc <- fs2.Stream.resource(ExecutionContexts.cachedThreadPool[F])
+      exitCode <- BlazeServerBuilder[F](serverEc)
         .bindHttp(8080, "0.0.0.0")
         .withHttpApp(Logger.httpApp(logHeaders = true, logBody = false)(httpApp))
         .serve

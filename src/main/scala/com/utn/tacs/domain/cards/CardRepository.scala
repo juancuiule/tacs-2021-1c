@@ -1,19 +1,21 @@
 package com.utn.tacs.domain.cards
 
-trait CardRepository {
-  def create(card: Card): Card
+import cats.data.OptionT
 
-  def findByPublisher(publisher: String): List[Card]
+trait CardRepository[F[_]] {
+  def create(card: Card): F[Card]
 
-  def update(card: Card): Option[Card]
+  def findByPublisher(publisher: String): F[List[Card]]
 
-  def get(id: Int): Option[Card]
+  def update(card: Card): OptionT[F, Card]
 
-  def getAll: List[Card]
+  def get(id: Int): OptionT[F, Card]
 
-  def delete(id: Int): Option[Card]
+  def getAll: F[List[Card]]
 
-  def findByName(name: String): Set[Card]
+  def delete(id: Int): OptionT[F, Card]
 
-  def list(pageSize: Int, offset: Int): List[Card]
+  def findByName(name: String): F[Set[Card]]
+
+  def list(pageSize: Int, offset: Int): F[List[Card]]
 }

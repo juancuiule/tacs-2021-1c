@@ -36,7 +36,7 @@ class DeckEndpointsTest
     val userRepo = UserMemoryRepository[IO]()
     val auth = new AuthTest[IO](userRepo)
 
-    val cardRepo = CardMemoryRepository()
+    val cardRepo = CardMemoryRepository[IO]()
     val cardValidation = CardValidation[IO](cardRepo)
     val cardService = CardService[IO](cardRepo, cardValidation)
     val superheroAPIService: SHService[IO] = MockSuperHeroService()
