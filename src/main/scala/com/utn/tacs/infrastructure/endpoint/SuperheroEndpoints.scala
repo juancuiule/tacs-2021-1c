@@ -19,16 +19,6 @@ class SuperheroEndpoints[F[+_] : Sync](service: SuperheroAPIService[F]) extends 
           case None => NotFound(s"superhero with id: $id, not found")
         }
 
-//      Devuelve lista de superheroes que matchean con searchName
-//      case GET -> Root / "name" / searchName =>
-//        val actionResult = service.searchSuperheroByName(searchName)
-//        actionResult.flatMap {
-//          case Some(superheros) => Ok(Json.obj(
-//            ("superheros", superheros.asJson)
-//          ))
-//          case None => NotFound(s"SuperHeroes not found for name $searchName")
-//        }
-
       // Devuelve lista de cartas posibles que matchean con searchName
       case GET -> Root / "name" / searchName =>
         val actionResult = service.searchSuperheroByName(searchName)

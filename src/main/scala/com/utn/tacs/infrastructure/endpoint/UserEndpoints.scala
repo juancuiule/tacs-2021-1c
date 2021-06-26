@@ -22,6 +22,14 @@ class UserEndpoints[F[_] : Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
 
   implicit val signupReqDecoder: EntityDecoder[F, SignupRequest] = jsonOf
 
+  def endpoints(
+    userService: UserService[F],
+    cryptService: PasswordHasher[F, A],
+    auth: SecuredRequestHandler[F, Long, User, AugmentedJWT[Auth, Long]]
+  ): HttpRoutes[F] = {
+    loginEndpoint(userService, cryptService, auth.authenticator) <+> signupEndpoint(userService, cryptService, auth.authenticator)
+  }
+
   private def loginEndpoint(
     userService: UserService[F],
     cryptService: PasswordHasher[F, A],
@@ -56,9 +64,6 @@ class UserEndpoints[F[_] : Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
       }
     }
 
-  case class LoginResponseDTO(userName: String, id: String, accessToken: String)
-
-
   private def signupEndpoint(
     userService: UserService[F],
     crypt: PasswordHasher[F, A],
@@ -91,14 +96,7 @@ class UserEndpoints[F[_] : Sync, A, Auth: JWTMacAlgo] extends Http4sDsl[F] {
       }
     }
 
-
-  def endpoints(
-    userService: UserService[F],
-    cryptService: PasswordHasher[F, A],
-    auth: SecuredRequestHandler[F, Long, User, AugmentedJWT[Auth, Long]]
-  ): HttpRoutes[F] = {
-    loginEndpoint(userService, cryptService, auth.authenticator) <+> signupEndpoint(userService, cryptService, auth.authenticator)
-  }
+  case class LoginResponseDTO(userName: String, id: String, accessToken: String)
 }
 
 object UserEndpoints {

@@ -60,12 +60,16 @@ class DeckEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
 
   private val addCardToDeckEndpoint: AuthEndpoint[F, Auth] = {
     case req@PATCH -> Root / IntVar(id) asAuthed _ =>
+      print(id)
       for {
         dto <- req.request.as[AddCardDTO]
         updated <- service.addCard(id, dto.cardId).value
-        resp <- updated match {
-          case Some(newDeck) => Ok(newDeck.asJson)
-          case None => InternalServerError()
+        resp <- {
+          print(updated)
+          updated match {
+            case Some(newDeck) => Ok(newDeck.asJson)
+            case None => InternalServerError()
+          }
         }
       } yield resp
   }

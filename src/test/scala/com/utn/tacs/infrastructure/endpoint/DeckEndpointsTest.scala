@@ -101,6 +101,7 @@ class DeckEndpointsTest
         addToDeckResp <- routes.run(addToDeckRqAuth)
         newDeck <- addToDeckResp.as[Deck]
       } yield {
+        print(newDeck)
         newDeck.cards should have size 1
       }).unsafeRunSync()
     }
