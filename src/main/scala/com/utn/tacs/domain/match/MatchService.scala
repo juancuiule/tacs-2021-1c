@@ -18,11 +18,11 @@ import scala.util.Random
 trait MatchError extends Serializable with Product
 
 case object MatchNotFoundError extends MatchError
-
 case object MatchAlreadyExistsError extends MatchError
-
 case object MatchActionError extends MatchError
-
+case class DeckDoesNotExistsError(deck: Int) extends MatchError
+case class PlayerDoesNotExistsError(player: String) extends MatchError
+case object SamePlayerError extends MatchError
 
 class MatchService[F[+_] : Applicative](
   repository: MatchRepository[F],

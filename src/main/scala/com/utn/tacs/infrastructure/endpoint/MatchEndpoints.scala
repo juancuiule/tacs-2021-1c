@@ -3,7 +3,7 @@ package com.utn.tacs.infrastructure.endpoint
 import cats.data.EitherT
 import cats.effect.{Concurrent, Sync, Timer}
 import cats.syntax.all._
-import com.utn.tacs.domain.`match`.{Match, MatchAlreadyExistsError, MatchNotFoundError, MatchService}
+import com.utn.tacs.domain.`match`.{DeckDoesNotExistsError, Match, MatchAlreadyExistsError, MatchError, MatchNotFoundError, MatchService, PlayerDoesNotExistsError, SamePlayerError}
 import com.utn.tacs.domain.auth.Auth
 import com.utn.tacs.domain.deck.DeckService
 import com.utn.tacs.domain.user.{User, UserNotFoundError, UserService}
@@ -49,7 +49,7 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
   private val createMatchEndpoint: AuthEndpoint[F, Auth] = {
     // TODO: validar que no este jugando partida contra él mismo
     case req@POST -> Root asAuthed _ =>
-      val action: F[Either[MatchAlreadyExistsError.type, Match]] = for {
+      val action: F[Either[MatchError, Match]] = for {
         post <- req.request.as[CreateMatchDTO]
         player1 = req.identity
         player2 <- userService.getUserByName(post.player2).value
@@ -57,17 +57,21 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
         result <- (player2, deck) match {
           case (Right(user2), Some(_deck)) =>
             if (user2.id.contains(player1.id.get))
-              ??? // player1 == player2 no se puede jugar
+              Left(SamePlayerError).pure[F]
             else
               service.createMatch(player1.id.get, user2.id.get, _deck.id).value
-          case (Right(_), None) => ??? // no existe ese deck
-          case (Left(UserNotFoundError), _) => ??? // no existe este otro usuario
+          case (Right(_), None) => Left(DeckDoesNotExistsError(post.deckId)).pure[F]
+          case (Left(UserNotFoundError), _) => Left(PlayerDoesNotExistsError(post.player2)).pure[F]
           case _ => Left(MatchAlreadyExistsError).pure[F]
         }
       } yield result
       action.flatMap {
         case Right(value) => Ok(value.asJson)
-        case Left(MatchAlreadyExistsError) => InternalServerError()
+        case Left(MatchAlreadyExistsError) => Conflict(Json.obj(("error", Json.fromString("Match already exists"))))
+        case Left(SamePlayerError) => Conflict(Json.obj(("error", Json.fromString("You can't play a match agains yourself"))))
+        case Left(DeckDoesNotExistsError(deck)) => NotFound(Json.obj(("error", Json.fromString(s"Deck ${deck} does not exist"))))
+        case Left(PlayerDoesNotExistsError(player)) => NotFound(Json.obj(("error", Json.fromString(s"Player ${player} does not exist"))))
+        case Left(_) => InternalServerError()
       }
   }
   private val getMatchReplayEndpoint: AuthEndpoint[F, Auth] = {

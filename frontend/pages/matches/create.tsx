@@ -70,7 +70,7 @@ export default function CreateDeck() {
               player: "",
               deck: "",
             }}
-            onSubmit={async ({ player, deck }) => {
+            onSubmit={async ({ player, deck }, formikHelpers) => {
               try {
                 const res = await api.POST<
                   { player2: string; deckId: string },
@@ -83,7 +83,10 @@ export default function CreateDeck() {
                   player2: player,
                 });
                 router.push(`/matches/${res.matchId}`);
-              } catch ({ status, response }) {}
+              } catch ({ status, response }) {
+                console.log(status, response)
+                formikHelpers.setFieldError('player', response.error)
+              }
             }}
             validationSchema={CreateDeckSchema}
           >
