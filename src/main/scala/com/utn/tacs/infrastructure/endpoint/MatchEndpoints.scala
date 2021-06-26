@@ -1,9 +1,9 @@
 package com.utn.tacs.infrastructure.endpoint
 
 import cats.data.EitherT
-import cats.effect.{Concurrent, Sync, Timer}
+import cats.effect.Sync
 import cats.syntax.all._
-import com.utn.tacs.domain.`match`.{DeckDoesNotExistsError, Match, MatchAlreadyExistsError, MatchError, MatchNotFoundError, MatchService, PlayerDoesNotExistsError, SamePlayerError}
+import com.utn.tacs.domain.`match`._
 import com.utn.tacs.domain.auth.Auth
 import com.utn.tacs.domain.deck.DeckService
 import com.utn.tacs.domain.user.{User, UserNotFoundError, UserService}
@@ -18,7 +18,7 @@ import tsec.jwt.algorithms.JWTMacAlgo
 
 import scala.util.Right
 
-class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
+class MatchEndpoints[F[+_] : Sync, Auth: JWTMacAlgo](
   service: MatchService[F],
   userService: UserService[F],
   deckService: DeckService[F],
@@ -47,7 +47,6 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
   }
 
   private val createMatchEndpoint: AuthEndpoint[F, Auth] = {
-    // TODO: validar que no este jugando partida contra él mismo
     case req@POST -> Root asAuthed _ =>
       val action: F[Either[MatchError, Match]] = for {
         post <- req.request.as[CreateMatchDTO]
@@ -66,7 +65,7 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
         }
       } yield result
       action.flatMap {
-        case Right(value) => Ok(value.asJson)
+        case Right(value) => Created(value.asJson)
         case Left(MatchAlreadyExistsError) => Conflict(Json.obj(("error", Json.fromString("Match already exists"))))
         case Left(SamePlayerError) => Conflict(Json.obj(("error", Json.fromString("You can't play a match agains yourself"))))
         case Left(DeckDoesNotExistsError(deck)) => NotFound(Json.obj(("error", Json.fromString(s"Deck ${deck} does not exist"))))
@@ -103,7 +102,7 @@ class MatchEndpoints[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
 }
 
 object MatchEndpoints {
-  def apply[F[+_] : Sync : Concurrent : Timer, Auth: JWTMacAlgo](
+  def apply[F[+_] : Sync, Auth: JWTMacAlgo](
     service: MatchService[F],
     userService: UserService[F],
     deckService: DeckService[F],

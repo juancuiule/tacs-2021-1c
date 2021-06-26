@@ -82,7 +82,6 @@ object Server {
         auth = routeAuth
       )
 
-      //      val cardRepo = CardMemoryRepository()
       cardRepo = DoobieCardRepository[F](xa)
       cardService = CardService(cardRepo, validation = CardValidation(cardRepo))
 
