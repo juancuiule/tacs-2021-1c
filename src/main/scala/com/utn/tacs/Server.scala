@@ -9,7 +9,7 @@ import com.utn.tacs.domain.cards._
 import com.utn.tacs.domain.deck.DeckService
 import com.utn.tacs.domain.user.{UserService, UserValidation}
 import com.utn.tacs.infrastructure.endpoint._
-import com.utn.tacs.infrastructure.repository.doobie.{DoobieCardRepository, DoobieUserRepository}
+import com.utn.tacs.infrastructure.repository.doobie.{DoobieCardRepository, DoobieDeckRepository, DoobieUserRepository}
 import com.utn.tacs.infrastructure.repository.memory._
 import doobie.util.ExecutionContexts
 import fs2.concurrent.Topic
@@ -61,7 +61,7 @@ object Server {
       ))
 
       matchRepo = MatchMemoryRepository()
-      deckRepo = DeckMemoryRepository()
+      deckRepo = DoobieDeckRepository[F](xa) // DeckMemoryRepository()
       authRepo = AuthMemoryRepository(key)
 
       userRepo = DoobieUserRepository[F](xa) // UserMemoryRepository()

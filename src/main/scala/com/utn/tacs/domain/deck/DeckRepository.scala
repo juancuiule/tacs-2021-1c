@@ -5,6 +5,8 @@ import cats.data.OptionT
 trait DeckRepository[F[_]] {
   def create(deck: Deck): F[Deck]
 
+  def addCard(deck: Deck, cardId: Int): OptionT[F, Deck]
+
   def update(deck: Deck): OptionT[F, Deck]
 
   def get(id: Int): OptionT[F, Deck]

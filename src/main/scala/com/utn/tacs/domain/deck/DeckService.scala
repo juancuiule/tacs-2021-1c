@@ -27,7 +27,7 @@ class DeckService[F[+_] : Applicative](repository: DeckRepository[F])(implicit M
     for {
       deck <- repository.get(id)
       updatedDeck = deck.copy(cards = deck.cards + cardId)
-      result <- repository.update(updatedDeck)
+      result <- repository.addCard(updatedDeck, cardId)
     } yield result
   }
 

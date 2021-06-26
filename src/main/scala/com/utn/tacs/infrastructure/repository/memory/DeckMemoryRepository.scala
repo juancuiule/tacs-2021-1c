@@ -30,6 +30,8 @@ class DeckMemoryRepository[F[_] : Applicative] extends DeckRepository[F] {
     cache.values.filter(deck => deck.name == name).toSet.pure[F]
 
   def list(pageSize: Int, offset: Int): F[List[Deck]] = cache.values.slice(offset, offset + pageSize).toList.pure[F]
+
+  def addCard(deck: Deck, cardId: Int): OptionT[F, Deck] = ???
 }
 
 object DeckMemoryRepository {
